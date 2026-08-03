@@ -41,14 +41,28 @@ jobs:
       - name: Build
         run: npm run build
 
+  # The image tag has to match the installed Playwright exactly: baselines are compared at a 2%
+  # pixel tolerance, and a different browser build renders differently enough to blow past it. A
+  # hardcoded tag would mean every dependency bump silently pairs a new client with old browsers,
+  # so the tag is read from the lockfile instead and the two cannot drift apart.
+  playwright-version:
+    name: resolve playwright version
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.resolve.outputs.version }}
+    steps:
+      - uses: actions/checkout@v4
+      - id: resolve
+        run: |
+          v=$(node -p "require('./package-lock.json').packages['node_modules/@playwright/test'].version")
+          echo "version=$v" >> "$GITHUB_OUTPUT"
+          echo "Playwright $v"
+
   e2e:
     name: browser tests
     runs-on: ubuntu-latest
-    # Pinned to the exact Playwright version in package.json. Screenshot baselines are compared at
-    # a 2% pixel tolerance, and font rendering differs enough between distributions to blow past
-    # that — so the baselines are generated in this same image and compared in it. A floating tag
-    # would silently invalidate all 16 of them.
-    container: mcr.microsoft.com/playwright:v1.61.1-noble
+    needs: playwright-version
+    container: mcr.microsoft.com/playwright:v${{ needs.playwright-version.outputs.version }}-noble
     steps:
       - uses: actions/checkout@v4
 

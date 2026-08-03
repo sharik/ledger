@@ -55,7 +55,10 @@ tolerance. Font rendering differs between machines, so regenerate them in the sa
 uses, never on your host:
 
 ```sh
-docker run --rm -v "$PWD":/w -w /w mcr.microsoft.com/playwright:v1.61.1-noble \
+# The tag must match the Playwright you have installed — CI reads it from the lockfile for the
+# same reason, and a mismatched browser build renders differently enough to fail the comparison.
+PW=$(node -p "require('./package-lock.json').packages['node_modules/@playwright/test'].version")
+docker run --rm -v "$PWD":/w -w /w "mcr.microsoft.com/playwright:v${PW}-noble" \
   npx playwright test --update-snapshots
 ```
 
