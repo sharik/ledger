@@ -58,11 +58,25 @@ jobs:
           echo "version=$v" >> "$GITHUB_OUTPUT"
           echo "Playwright $v"
 
+  # Sharded across four runners. The suite is ~354 tests at ~3.3s each, and as a single job it spent
+  # 92% of the whole workflow's wall clock on them — 9m43s of a 10m25s job, on a green run with no
+  # retries. Each shard also gets its own vite dev server, so this is real parallelism rather than
+  # more workers contending for one server (which is the thing `workers: 2` exists to avoid).
+  #
+  # `needs` is a job-level edge, so `playwright-version` still runs ONCE and every leg resolves the
+  # same tag — which is what keeps the 2% screenshot tolerance honest across shards.
   e2e:
-    name: browser tests
+    name: browser tests shard ${{ matrix.shard }}
     runs-on: ubuntu-latest
     needs: playwright-version
     container: mcr.microsoft.com/playwright:v${{ needs.playwright-version.outputs.version }}-noble
+    strategy:
+      # A red shard must not cancel its siblings. The shards are disjoint slices of one suite, so
+      # cancelling them throws away exactly the information the run was opened to get, and finding
+      # the second failure would then cost another full round trip.
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3, 4]
     steps:
       - uses: actions/checkout@v7
 
@@ -86,18 +100,93 @@ jobs:
       # which is also the only way its report gets regenerated.
       #
       # `mobile-sm` runs that spec and nothing else, so it is excluded with it.
+      #
+      # `--shard` is applied AFTER `--project` and `--grep-invert` — project selection and grep are
+      # pre-shard filters — so each leg gets a quarter of the tests that survive the filters, not a
+      # quarter of everything followed by a filter. `strategy.job-total` is the matrix size, which
+      # keeps the shard count in exactly one place: the matrix list above.
+      #
+      # `blob` replaces the default reporter: each leg writes blob-report/report-<n>.zip and the
+      # e2e-report job stitches them into one HTML report, traces and screenshot diffs intact.
+      # `github` keeps the inline PR annotations, `list` keeps live progress in the log.
       - name: Playwright
-        run: npx playwright test --project=desktop --project=mobile --grep-invert "mobile audit"
+        run: >
+          npx playwright test
+          --project=desktop --project=mobile --grep-invert "mobile audit"
+          --shard=${{ matrix.shard }}/${{ strategy.job-total }}
+          --reporter=blob,github,list
         env:
           HOME: /root
 
       - uses: actions/upload-artifact@v7
         if: ${{ !cancelled() }}
         with:
+          # upload-artifact refuses a second upload under a name already used in the run, so the
+          # shard index has to be in the name. These are intermediates consumed by e2e-report,
+          # hence the short retention.
+          name: blob-report-${{ matrix.shard }}
+          path: blob-report/
+          retention-days: 1
+
+  # The ruleset on `main` requires a status check named literally "browser tests". Matrix legs report
+  # as "browser tests shard 1..4" and can never produce that name, and a required context that never
+  # reports leaves every PR BLOCKED rather than red — a failure mode that reads as GitHub being
+  # broken. This job keeps the contracted name and collapses the legs into the one bit it needs.
+  #
+  # `if: !cancelled()` is load-bearing: without it the gate is SKIPPED when a shard fails, the
+  # required check never reports, and a broken build again presents as a stuck one.
+  e2e-gate:
+    name: browser tests
+    runs-on: ubuntu-latest
+    needs: e2e
+    if: ${{ !cancelled() }}
+    steps:
+      - name: Collapse the shard results
+        if: ${{ needs.e2e.result != 'success' }}
+        run: |
+          echo "browser tests: shards reported '${{ needs.e2e.result }}' — see the per-shard logs"
+          exit 1
+
+  # One HTML report for the whole suite, merged from the per-shard blobs. This also fixes a quieter
+  # bug: the old job uploaded `playwright-report/`, which the github+list reporters never write — so
+  # the artifact only ever held whatever openfile.spec.ts left behind in test-results/, and there has
+  # never been per-test timing data to look at.
+  e2e-report:
+    name: merge browser test reports
+    runs-on: ubuntu-latest
+    needs: e2e
+    if: ${{ !cancelled() }}
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+
+      - run: npm ci
+
+      - uses: actions/download-artifact@v8
+        with:
+          path: all-blob-reports
+          pattern: blob-report-*
+          # Flatten every shard's blob into one directory — merge-reports takes a single dir.
+          merge-multiple: true
+
+      # merge-reports exits 0 even for a red suite, so this job stays green while e2e-gate owns
+      # pass/fail: that job is the verdict, this one is the evidence. The json sidecar is what makes
+      # "which tests are slowest" a grep rather than a click-through.
+      - name: Merge
+        run: npx playwright merge-reports --reporter html,json ./all-blob-reports > report.json
+        env:
+          PLAYWRIGHT_HTML_OPEN: never
+
+      - uses: actions/upload-artifact@v7
+        with:
           name: playwright-report
           path: |
             playwright-report/
-            test-results/
+            report.json
           retention-days: 7
 
   smoke:

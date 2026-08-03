@@ -2,6 +2,7 @@ node_modules/
 dist/
 test-results/
 playwright-report/
+blob-report/
 # Mobile-audit measurements + screenshot gallery. Kept out of test-results/ because Playwright
 # empties that directory on every run, which would destroy the data specs/Mobile-Audit.md is
 # generated from.
