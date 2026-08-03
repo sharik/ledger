@@ -11,6 +11,10 @@ jobs:
   conventional-commit:
     name: conventional commit
     runs-on: ubuntu-latest
+    # Dependabot writes its own titles and capitalises the subject ("Bump the actions group…").
+    # Its prefixes are already set in dependabot.yml, so the format is under our control; linting
+    # style on a machine-authored title just produces a red check nobody can act on.
+    if: github.actor != 'dependabot[bot]'
     steps:
       # PRs are squash-merged, so the PR TITLE becomes the commit message on main — which is what
       # release-please reads to decide the next version. Linting the title is therefore linting
