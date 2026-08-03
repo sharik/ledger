@@ -1,0 +1,47 @@
+name: Feature request
+description: Suggest a capability or an improvement
+labels: ["type:feat"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Please describe the **problem** before the solution — it usually turns out there is a
+        simpler answer than the one either of us thought of first.
+
+        As above: no real financial data in the description.
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: The problem
+      description: What are you trying to do that the app makes hard or impossible today?
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposal
+    attributes:
+      label: What you have in mind
+      description: Optional. How you imagine it working.
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: What you tried instead
+      description: Workarounds you are using today, and why they fall short.
+
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      options:
+        - Import (a new bank, or a new file format)
+        - Sync
+        - Transactions / categorization
+        - Analytics, trends, comparisons
+        - Budgets and goals
+        - Trips
+        - Assistant
+        - Something else
+    validations:
+      required: true

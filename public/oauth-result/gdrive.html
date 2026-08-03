@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Ledger — signing in</title>
+  </head>
+  <body>
+    <p style="font: 13px/1.5 system-ui, sans-serif">You can close this window.</p>
+    <script>
+      // Google's OAuth redirect target. Registered verbatim as the redirect URI;
+      // served straight out of public/, so it exists in dev and in a build alike.
+      //
+      // Post before closing, not after: iOS Safari in standalone mode refuses to
+      // close a popup, and doing it in this order means the code still reaches the
+      // app on that path (KeeWeb hit the same thing, their issue #1711).
+      try {
+        if (window.opener) {
+          window.opener.postMessage({ storage: 'gdrive', search: window.location.search }, window.location.origin)
+        }
+      } finally {
+        window.close()
+      }
+    </script>
+  </body>
+</html>

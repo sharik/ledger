@@ -1,0 +1,71 @@
+# https://docs.coderabbit.ai/guides/configure-coderabbit
+language: en-GB
+
+reviews:
+  profile: chill
+  request_changes_workflow: false
+  high_level_summary: true
+  poem: false
+  review_status: false
+  auto_review:
+    enabled: true
+    drafts: false
+
+  path_filters:
+    # Generated or binary, and reviewing them produces noise rather than findings.
+    - '!tests/fixtures/**'
+    - '!e2e/__screenshots__/**'
+    - '!dist/**'
+    - '!public/fonts/**'
+    - '!package-lock.json'
+    - '!LICENSE'
+
+  path_instructions:
+    - path: '**/*.{ts,tsx}'
+      instructions: |
+        Money is ALWAYS integer minor units (`amountMinor: -1815` is −€18.15). Flag any float
+        arithmetic on money, and any parseFloat/toFixed used mid-calculation rather than at a
+        formatting boundary — balances must reconcile exactly.
+
+        Flag anything that would put real personal data in the repo: a real surname, IBAN, RIB,
+        account number or card number in code, tests, comments or fixtures. Synthetic values are
+        required, and `tests/no-pii.test.ts` enforces it.
+
+    - path: 'src/sync/**'
+      instructions: |
+        This is the highest-risk directory in the project: mistakes here lose user data silently,
+        on someone else's machine, weeks later.
+
+        `threeWayMerge` must stay a PURE function — no clock reads, no randomness, no I/O in the
+        decision path, because two devices must reach the same result independently.
+
+        An edit must beat a delete (a resurrected record is recoverable, a lost one is not).
+        Field-level conflicts are last-write-wins by `updatedAt` AND must preserve the losing value
+        in a ConflictEntry rather than discarding it.
+
+        `write()` must always be a compare-and-swap guarded by `ifRevision`. Any change that
+        weakens or bypasses that guard lets one device overwrite another's work.
+
+    - path: 'src/import/adapters/**'
+      instructions: |
+        Adapters must be deterministic and source-ordered: parsing the same file twice must yield
+        identical rows and identical hashes, since those hashes are what stop a re-imported
+        statement from duplicating transactions.
+
+        Detection must key on institution markers, never on anything derived from one particular
+        account — no holder names, no account numbers, no home towns in a regex.
+
+    - path: 'e2e/**'
+      instructions: |
+        The e2e suite runs against the Vite DEV server on purpose: it depends on `?kdf=test`,
+        `?now=`, `?remote=test:` and `?drive=test:`, all of which `import.meta.env.DEV` strips from
+        production. Flag any change that points the webServer at a production build — the built
+        artifact is covered separately by the smoke job.
+
+    - path: 'src/model/seed.ts'
+      instructions: |
+        This is the demo vault every user sees on first open, and it ships in the bundle. Names and
+        account identifiers here must be invented, never real.
+
+chat:
+  auto_reply: true

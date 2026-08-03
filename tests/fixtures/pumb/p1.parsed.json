@@ -1,0 +1,169 @@
+{
+  "institution": "pumb",
+  "variant": "pdf",
+  "locale": "uk",
+  "fingerprint": "pumb:UA331272549667072841796052987",
+  "accountMask": "2987",
+  "holderNames": [
+    "Кюфякобеш Пютамюлес Гицюшомя"
+  ],
+  "accountCurrency": "UAH",
+  "periodFrom": "2025-02-01",
+  "periodTo": "2025-02-28",
+  "openingBalance": 26349.45,
+  "closingBalance": 11525.3,
+  "printedTotals": {
+    "debitMinor": 1920601,
+    "creditMinor": 438186
+  },
+  "rows": [
+    {
+      "bookedDate": "2025-02-01",
+      "time": "09:48:58",
+      "postedDate": "2025-02-03",
+      "amountMinor": 438186,
+      "currency": "UAH",
+      "origAmount": 100,
+      "origCurrency": "EUR",
+      "cardMask": "86011331****6502",
+      "details": "VUGUMELO KENAWI FRFR",
+      "opDesc": "Повернення коштів",
+      "sourceLine": 0
+    },
+    {
+      "bookedDate": "2025-02-01",
+      "time": "09:48:58",
+      "postedDate": "2025-02-03",
+      "amountMinor": -438186,
+      "currency": "UAH",
+      "origAmount": 100,
+      "origCurrency": "EUR",
+      "cardMask": "86011331****6502",
+      "details": "VUGUMELO KENAWI FRFR",
+      "opDesc": "Покупка",
+      "sourceLine": 1
+    },
+    {
+      "bookedDate": "2025-02-02",
+      "time": "19:49:05",
+      "postedDate": "2025-02-04",
+      "amountMinor": -37044,
+      "currency": "UAH",
+      "origAmount": 8.45,
+      "origCurrency": "EUR",
+      "cardMask": "86011331****6502",
+      "details": "RACE BEMADU KENAWI FRFR",
+      "opDesc": "Покупка",
+      "sourceLine": 2
+    },
+    {
+      "bookedDate": "2025-02-03",
+      "time": "09:00:48",
+      "postedDate": "2025-02-05",
+      "amountMinor": -10500,
+      "currency": "UAH",
+      "origAmount": 2.4,
+      "origCurrency": "EUR",
+      "cardMask": "86011331****6502",
+      "details": "SEDUZOROGO SUD WUKAMIJU FRFR",
+      "opDesc": "Покупка",
+      "sourceLine": 3
+    },
+    {
+      "bookedDate": "2025-02-03",
+      "time": "10:40:26",
+      "postedDate": "2025-02-05",
+      "amountMinor": -72912,
+      "currency": "UAH",
+      "origAmount": 16.64,
+      "origCurrency": "EUR",
+      "cardMask": "86011331****6502",
+      "details": "BUPAM CAR KENAWI FRFR",
+      "opDesc": "Покупка",
+      "sourceLine": 4
+    },
+    {
+      "bookedDate": "2025-02-04",
+      "time": "17:12:13",
+      "postedDate": "2025-02-05",
+      "amountMinor": -2184,
+      "currency": "UAH",
+      "origAmount": 0.5,
+      "origCurrency": "EUR",
+      "cardMask": "86011331****6502",
+      "details": "WOL*HICE 3VOP XUPIRIWE Riwah FRFR",
+      "opDesc": "Покупка",
+      "sourceLine": 5
+    },
+    {
+      "bookedDate": "2025-02-22",
+      "time": "13:14:52",
+      "postedDate": "2025-02-24",
+      "amountMinor": -48478,
+      "currency": "UAH",
+      "origAmount": 481.02,
+      "origCurrency": "UAH",
+      "cardMask": "86011331****6502",
+      "details": "JOE & THE BEGIN HIA BICI QAQA",
+      "opDesc": "Покупка",
+      "sourceLine": 6
+    },
+    {
+      "bookedDate": "2025-02-22",
+      "time": "22:09:11",
+      "postedDate": "2025-02-24",
+      "amountMinor": -286177,
+      "currency": "UAH",
+      "origAmount": 65,
+      "origCurrency": "EUR",
+      "cardMask": "86011331****6502",
+      "details": "CojAs *Wado Jutife Nu Wuceha-pedu- BFRFR",
+      "opDesc": "Покупка",
+      "sourceLine": 7
+    },
+    {
+      "bookedDate": "2025-02-22",
+      "time": "22:12:00",
+      "postedDate": "2025-02-24",
+      "amountMinor": -24344,
+      "currency": "UAH",
+      "origAmount": 5.53,
+      "origCurrency": "EUR",
+      "cardMask": "86011331****6502",
+      "details": "TABARUV D HONOK H LOXA RIWAH 14 FRFR",
+      "opDesc": "Покупка",
+      "sourceLine": 8
+    },
+    {
+      "bookedDate": "2025-02-27",
+      "time": "14:54:08",
+      "postedDate": "2025-03-01",
+      "amountMinor": -787805,
+      "currency": "UAH",
+      "origAmount": 179.04,
+      "origCurrency": "EUR",
+      "cardMask": "86011331****7834",
+      "details": "AIR POLAHA MOVUSA CDG CEFRFR",
+      "opDesc": "Покупка",
+      "sourceLine": 9
+    },
+    {
+      "bookedDate": "2025-02-27",
+      "time": "17:10:17",
+      "postedDate": "2025-02-28",
+      "amountMinor": -212971,
+      "currency": "UAH",
+      "origAmount": 48.4,
+      "origCurrency": "EUR",
+      "cardMask": "86011331****7834",
+      "details": "Maxofege Riwah FRFR",
+      "opDesc": "Покупка",
+      "sourceLine": 10
+    }
+  ],
+  "skipped": {
+    "pending": 0,
+    "reverted": 0,
+    "unparsed": []
+  }
+}

@@ -1,0 +1,272 @@
+{
+  "institution": "monobank",
+  "variant": "csv",
+  "locale": "en",
+  "fingerprint": null,
+  "accountCurrency": "UAH",
+  "periodFrom": "2025-06-02",
+  "periodTo": "2025-09-23",
+  "openingBalance": 5254.11,
+  "closingBalance": 10133.8,
+  "rows": [
+    {
+      "date": "2025-06-02",
+      "description": "LIWI",
+      "mcc": 7512,
+      "cardAmount": -1458.49,
+      "opAmount": -30.64,
+      "opCurrency": "EUR",
+      "commission": null,
+      "balance": 3795.62,
+      "sourceLine": 0
+    },
+    {
+      "date": "2025-06-03",
+      "description": "Cancel LIWI",
+      "mcc": 7512,
+      "cardAmount": 716.39,
+      "opAmount": 15.05,
+      "opCurrency": "EUR",
+      "commission": null,
+      "balance": 4512.01,
+      "sourceLine": 1
+    },
+    {
+      "date": "2025-06-04",
+      "description": "Cancel LIWI",
+      "mcc": 7512,
+      "cardAmount": 742.1,
+      "opAmount": 15.59,
+      "opCurrency": "EUR",
+      "commission": null,
+      "balance": 5254.11,
+      "sourceLine": 2
+    },
+    {
+      "date": "2025-06-04",
+      "description": "LIWI,Alsace,FR",
+      "mcc": 7512,
+      "cardAmount": -744.44,
+      "opAmount": -15.59,
+      "opCurrency": "EUR",
+      "commission": null,
+      "balance": 4509.67,
+      "sourceLine": 3
+    },
+    {
+      "date": "2025-06-05",
+      "description": "ZIDEWA",
+      "mcc": 5812,
+      "cardAmount": -2863.15,
+      "opAmount": -59.9,
+      "opCurrency": "EUR",
+      "commission": null,
+      "balance": 1646.52,
+      "sourceLine": 4
+    },
+    {
+      "date": "2025-06-15",
+      "description": "Pani GEV kafoput",
+      "mcc": 4829,
+      "cardAmount": 23750,
+      "opAmount": 23750,
+      "opCurrency": "UAH",
+      "commission": null,
+      "balance": 25396.52,
+      "sourceLine": 5
+    },
+    {
+      "date": "2025-06-18",
+      "description": "6420 7****7376",
+      "mcc": 4829,
+      "cardAmount": -7035.18,
+      "opAmount": -7035.18,
+      "opCurrency": "UAH",
+      "commission": null,
+      "balance": 18361.34,
+      "sourceLine": 6
+    },
+    {
+      "date": "2025-06-18",
+      "description": "КОЗ Шюжакяси Кишофаку Хіжюлахе",
+      "mcc": 4829,
+      "cardAmount": -12261,
+      "opAmount": -12261,
+      "opCurrency": "UAH",
+      "commission": 61,
+      "balance": 6100.34,
+      "sourceLine": 7
+    },
+    {
+      "date": "2025-07-14",
+      "description": "КЯ ЛУД д Кюфинякечюш гугимур/03216321",
+      "mcc": 4829,
+      "cardAmount": -5280,
+      "opAmount": -5280,
+      "opCurrency": "UAH",
+      "commission": null,
+      "balance": 820.34,
+      "sourceLine": 8
+    },
+    {
+      "date": "2025-07-14",
+      "description": "Pani GEV kafoput",
+      "mcc": 4829,
+      "cardAmount": 24275,
+      "opAmount": 24275,
+      "opCurrency": "UAH",
+      "commission": null,
+      "balance": 25095.34,
+      "sourceLine": 9
+    },
+    {
+      "date": "2025-07-18",
+      "description": "6420 7****7376",
+      "mcc": 4829,
+      "cardAmount": -7035.18,
+      "opAmount": -7035.18,
+      "opCurrency": "UAH",
+      "commission": null,
+      "balance": 18060.16,
+      "sourceLine": 10
+    },
+    {
+      "date": "2025-08-05",
+      "description": "Xehibezeligex «Фочі вамілюцосу🥳🥳»",
+      "mcc": 4829,
+      "cardAmount": -1000,
+      "opAmount": -1000,
+      "opCurrency": "UAH",
+      "commission": null,
+      "balance": 17060.16,
+      "sourceLine": 11
+    },
+    {
+      "date": "2025-08-12",
+      "description": "Pani GEV kafoput",
+      "mcc": 4829,
+      "cardAmount": 23925,
+      "opAmount": 23925,
+      "opCurrency": "UAH",
+      "commission": null,
+      "balance": 40985.16,
+      "sourceLine": 12
+    },
+    {
+      "date": "2025-08-12",
+      "description": "КОЗ Лацоци Цизоф Зютобюпич",
+      "mcc": 4829,
+      "cardAmount": -12261,
+      "opAmount": -12261,
+      "opCurrency": "UAH",
+      "commission": 61,
+      "balance": 28724.16,
+      "sourceLine": 13
+    },
+    {
+      "date": "2025-08-15",
+      "description": "Safizoda +357844289937",
+      "mcc": 4814,
+      "cardAmount": -20,
+      "opAmount": -20,
+      "opCurrency": "UAH",
+      "commission": null,
+      "balance": 28704.16,
+      "sourceLine": 14
+    },
+    {
+      "date": "2025-08-18",
+      "description": "6420 7****7376",
+      "mcc": 4829,
+      "cardAmount": -7035.18,
+      "opAmount": -7035.18,
+      "opCurrency": "UAH",
+      "commission": null,
+      "balance": 21668.98,
+      "sourceLine": 15
+    },
+    {
+      "date": "2025-08-21",
+      "description": "Xehibezeligex «Ра TOF-вачаб»",
+      "mcc": 4829,
+      "cardAmount": -1500,
+      "opAmount": -1500,
+      "opCurrency": "UAH",
+      "commission": null,
+      "balance": 20168.98,
+      "sourceLine": 16
+    },
+    {
+      "date": "2025-09-05",
+      "description": "he rez wi livuha kafejof",
+      "mcc": 4112,
+      "cardAmount": -4416.02,
+      "opAmount": -4416.02,
+      "opCurrency": "UAH",
+      "commission": null,
+      "balance": 15752.96,
+      "sourceLine": 17
+    },
+    {
+      "date": "2025-09-05",
+      "description": "he rez wi livuha kafejof",
+      "mcc": 4112,
+      "cardAmount": -4416.02,
+      "opAmount": -4416.02,
+      "opCurrency": "UAH",
+      "commission": null,
+      "balance": 11336.94,
+      "sourceLine": 18
+    },
+    {
+      "date": "2025-09-05",
+      "description": "Cancel he rez wi livuha kafejof",
+      "mcc": 4112,
+      "cardAmount": 4416.02,
+      "opAmount": 4416.02,
+      "opCurrency": "UAH",
+      "commission": null,
+      "balance": 15752.96,
+      "sourceLine": 19
+    },
+    {
+      "date": "2025-09-05",
+      "description": "Cancel he rez wi livuha kafejof",
+      "mcc": 4112,
+      "cardAmount": 4416.02,
+      "opAmount": 4416.02,
+      "opCurrency": "UAH",
+      "commission": null,
+      "balance": 20168.98,
+      "sourceLine": 20
+    },
+    {
+      "date": "2025-09-18",
+      "description": "6420 7****7376",
+      "mcc": 4829,
+      "cardAmount": -7035.18,
+      "opAmount": -7035.18,
+      "opCurrency": "UAH",
+      "commission": null,
+      "balance": 13133.8,
+      "sourceLine": 21
+    },
+    {
+      "date": "2025-09-23",
+      "description": "Мовіш П.",
+      "mcc": 4829,
+      "cardAmount": -3000,
+      "opAmount": -3000,
+      "opCurrency": "UAH",
+      "commission": null,
+      "balance": 10133.8,
+      "sourceLine": 22
+    }
+  ],
+  "skipped": {
+    "pending": 0,
+    "reverted": 0,
+    "unparsed": []
+  },
+  "headerWarning": false
+}

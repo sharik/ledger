@@ -1,0 +1,175 @@
+[
+  {
+    "bookedDate": "2025-06-09",
+    "amountMinor": 284429,
+    "currency": "UAH",
+    "original": {
+      "amount": 60.8,
+      "currency": "EUR"
+    },
+    "merchant": "SOKIKEM, MUFAKALIV VEMEROTO",
+    "normDesc": "SOKIKEM, MUFAKALIV VEMEROTO",
+    "kind": "refund",
+    "balanceAfterMinor": 318567,
+    "sourceLine": 0,
+    "raw": "SOKIKEM, MUFAKALIV VEMEROTO"
+  },
+  {
+    "bookedDate": "2025-06-09",
+    "amountMinor": 1076031,
+    "currency": "UAH",
+    "original": {
+      "amount": 230,
+      "currency": "EUR"
+    },
+    "merchant": "SOKIKEM, MUFAKALIV VEMEROTO",
+    "normDesc": "SOKIKEM, MUFAKALIV VEMEROTO",
+    "kind": "refund",
+    "balanceAfterMinor": 1394598,
+    "sourceLine": 1,
+    "raw": "SOKIKEM, MUFAKALIV VEMEROTO"
+  },
+  {
+    "bookedDate": "2025-06-09",
+    "amountMinor": 91682,
+    "currency": "UAH",
+    "original": {
+      "amount": 19.6,
+      "currency": "EUR"
+    },
+    "merchant": "SOKIKEM, MUFAKALIV VEMEROTO",
+    "normDesc": "SOKIKEM, MUFAKALIV VEMEROTO",
+    "kind": "refund",
+    "balanceAfterMinor": 1486280,
+    "sourceLine": 2,
+    "raw": "SOKIKEM, MUFAKALIV VEMEROTO"
+  },
+  {
+    "bookedDate": "2025-06-10",
+    "amountMinor": -176459,
+    "currency": "UAH",
+    "original": {
+      "amount": -36.88,
+      "currency": "EUR"
+    },
+    "merchant": "Wijuha",
+    "normDesc": "WIJUHA",
+    "kind": "expense",
+    "bankCategory": "Groceries",
+    "balanceAfterMinor": 1309821,
+    "sourceLine": 3,
+    "raw": "Wijuha"
+  },
+  {
+    "bookedDate": "2025-06-24",
+    "amountMinor": -39167,
+    "currency": "UAH",
+    "original": {
+      "amount": -7.99,
+      "currency": "EUR"
+    },
+    "merchant": "Fodez Xumew luke fuf, tuli.pe/cijo",
+    "normDesc": "FODEZ XUMEW LUKE FUF, TULI.PE/CIJO",
+    "kind": "expense",
+    "bankCategory": "Entertainment",
+    "balanceAfterMinor": 1270654,
+    "sourceLine": 4,
+    "raw": "Fodez Xumew luke fuf, tuli.pe/cijo"
+  },
+  {
+    "bookedDate": "2025-06-29",
+    "amountMinor": -29653,
+    "currency": "UAH",
+    "original": {
+      "amount": -5.99,
+      "currency": "EUR"
+    },
+    "merchant": "Fodez Xumew luke fuf, tuli.pe/cijo",
+    "normDesc": "FODEZ XUMEW LUKE FUF, TULI.PE/CIJO",
+    "kind": "expense",
+    "bankCategory": "Entertainment",
+    "balanceAfterMinor": 1241001,
+    "sourceLine": 5,
+    "raw": "Fodez Xumew luke fuf, tuli.pe/cijo"
+  },
+  {
+    "bookedDate": "2025-07-30",
+    "amountMinor": -26829,
+    "currency": "UAH",
+    "original": {
+      "amount": -5.5,
+      "currency": "EUR"
+    },
+    "merchant": "roka, Tagoduka",
+    "normDesc": "ROKA, TAGODUKA",
+    "kind": "expense",
+    "bankCategory": "Dining out",
+    "balanceAfterMinor": 1214172,
+    "sourceLine": 6,
+    "raw": "roka, Tagoduka"
+  },
+  {
+    "bookedDate": "2025-08-03",
+    "amountMinor": -297479,
+    "currency": "UAH",
+    "original": {
+      "amount": -70.8,
+      "currency": "USD"
+    },
+    "merchant": "JefEnabiz, Xufido",
+    "normDesc": "JEFENABIZ, XUFIDO",
+    "kind": "expense",
+    "bankCategory": "Entertainment",
+    "balanceAfterMinor": 916693,
+    "sourceLine": 7,
+    "raw": "JefEnabiz, Xufido"
+  },
+  {
+    "bookedDate": "2025-08-24",
+    "amountMinor": -579561,
+    "currency": "UAH",
+    "original": {
+      "amount": -118.81,
+      "currency": "EUR"
+    },
+    "merchant": "Nexebu",
+    "normDesc": "NEXEBU",
+    "kind": "expense",
+    "bankCategory": "Travel",
+    "balanceAfterMinor": 337132,
+    "sourceLine": 8,
+    "raw": "Nexebu"
+  },
+  {
+    "bookedDate": "2025-09-18",
+    "amountMinor": -4877,
+    "currency": "UAH",
+    "original": {
+      "amount": -0.99,
+      "currency": "EUR"
+    },
+    "merchant": "Fodez Xumew luke fuf, tuli.pe/cijo",
+    "normDesc": "FODEZ XUMEW LUKE FUF, TULI.PE/CIJO",
+    "kind": "expense",
+    "bankCategory": "Entertainment",
+    "balanceAfterMinor": 332255,
+    "sourceLine": 9,
+    "raw": "Fodez Xumew luke fuf, tuli.pe/cijo"
+  },
+  {
+    "bookedDate": "2025-09-20",
+    "amountMinor": -34265,
+    "currency": "UAH",
+    "original": {
+      "amount": -6.99,
+      "currency": "EUR"
+    },
+    "merchant": "Wijuha",
+    "normDesc": "WIJUHA",
+    "kind": "expense",
+    "bankCategory": "Entertainment",
+    "balanceAfterMinor": 297990,
+    "sourceLine": 10,
+    "raw": "Wijuha"
+  }
+]

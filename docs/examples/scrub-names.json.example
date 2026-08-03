@@ -1,0 +1,13 @@
+[
+  "_comment: copy to scrub-names.json beside your real statements and list the personal-name",
+  "_comment: tokens those files contain — your own surname and given name, family members, and",
+  "_comment: any town that appears in an address block. Business and brand names stay: they are",
+  "_comment: what the adapters parse.",
+  "_comment: Include truncated forms too. Statements clip names to a fixed column width, so one",
+  "_comment: surname can appear both in full and cut short, and only the form present in the file",
+  "_comment: gets replaced.",
+  "_comment: Cyrillic spellings need their own entries; a Latin one will not match them.",
+  "SURNAME",
+  "GIVENNAME",
+  "ПРІЗВИЩЕ"
+]

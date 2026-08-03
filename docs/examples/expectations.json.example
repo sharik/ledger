@@ -1,0 +1,16 @@
+{
+  "_comment": [
+    "Copy to `expectations.json` beside your real statements. These values are what the",
+    "real-file suites assert on — an account number and the holder's surname — so they stay",
+    "out of git for the same reason the statements themselves do.",
+    "Without this file the `haveReal()`-gated suites skip, exactly as they do in CI."
+  ],
+  "rib": "bnp:<bank>-<branch>-<account>-<key>",
+  "livretRib": "bnp:<bank>-<branch>-<account>-<key>",
+  "mask": "0000",
+  "holder": "SURNAME",
+  "beneficiary": "SURNAME",
+  "motif": "TOKEN|TOKEN",
+  "livretAccountName": "BNP Surname Livret A",
+  "pumbAccountName": "PUMB Прізвище"
+}

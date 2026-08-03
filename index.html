@@ -1,0 +1,326 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <!-- `viewport-fit=cover` is what makes env(safe-area-inset-*) resolve to anything but 0. -->
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>Ledger</title>
+    <link
+      rel="icon"
+      href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' fill='%23191713'/%3E%3Ctext x='16' y='23' text-anchor='middle' font-family='Georgia,serif' font-size='20' fill='%23F4F2EC'%3EL%3C/text%3E%3C/svg%3E"
+    />
+    <!--
+      Content-Security-Policy. Pages serves static files and cannot set response headers, so a meta
+      tag is the only place this can live.
+
+      `connect-src` is deliberately open. The assistant lets the user point at ANY OpenAI-compatible
+      endpoint — their own Ollama, LM Studio, or a self-hosted gateway — so an allowlist would turn
+      a supported feature into a silent failure. Everything that could execute or be framed is
+      locked down instead; the app has no backend to talk to, and the origins it does reach
+      (Google's OAuth and Drive APIs) are the user's own accounts.
+
+      `wasm-unsafe-eval` is required, not incidental: Argon2id runs in WebAssembly (hash-wasm), and
+      without it the browser refuses to compile the module and NO vault can be created or unlocked.
+      It permits WebAssembly compilation only — plain `eval` of JavaScript stays blocked.
+
+      No `frame-ancestors`: it is ignored when delivered via <meta> and only works as a response
+      header, which a static host cannot set. Framing protection therefore has to come from the
+      host, not from here.
+    -->
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; worker-src 'self' blob:; connect-src *; base-uri 'self'; form-action 'none'; object-src 'none'"
+    />
+    <style>
+      /*
+        IBM Plex, served from this origin. Self-hosted rather than pulled from the Google Fonts CDN:
+        an app that promises to keep your finances on your device should not announce every page
+        load to a third party, and it means the whole thing works offline. Latin + Cyrillic, because
+        transaction descriptions arrive in both.
+      */
+      @font-face { font-family: 'IBM Plex Sans'; font-style: normal; font-weight: 400; font-display: swap; src: url('fonts/ibm-plex-sans-latin-400-normal.woff2') format('woff2'); unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD; }
+      @font-face { font-family: 'IBM Plex Sans'; font-style: normal; font-weight: 500; font-display: swap; src: url('fonts/ibm-plex-sans-latin-500-normal.woff2') format('woff2'); unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD; }
+      @font-face { font-family: 'IBM Plex Sans'; font-style: normal; font-weight: 600; font-display: swap; src: url('fonts/ibm-plex-sans-latin-600-normal.woff2') format('woff2'); unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD; }
+      @font-face { font-family: 'IBM Plex Sans'; font-style: normal; font-weight: 700; font-display: swap; src: url('fonts/ibm-plex-sans-latin-700-normal.woff2') format('woff2'); unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD; }
+      @font-face { font-family: 'IBM Plex Sans'; font-style: normal; font-weight: 400; font-display: swap; src: url('fonts/ibm-plex-sans-cyrillic-400-normal.woff2') format('woff2'); unicode-range: U+0301, U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116; }
+      @font-face { font-family: 'IBM Plex Sans'; font-style: normal; font-weight: 500; font-display: swap; src: url('fonts/ibm-plex-sans-cyrillic-500-normal.woff2') format('woff2'); unicode-range: U+0301, U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116; }
+      @font-face { font-family: 'IBM Plex Sans'; font-style: normal; font-weight: 600; font-display: swap; src: url('fonts/ibm-plex-sans-cyrillic-600-normal.woff2') format('woff2'); unicode-range: U+0301, U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116; }
+      @font-face { font-family: 'IBM Plex Sans'; font-style: normal; font-weight: 700; font-display: swap; src: url('fonts/ibm-plex-sans-cyrillic-700-normal.woff2') format('woff2'); unicode-range: U+0301, U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116; }
+      @font-face { font-family: 'IBM Plex Mono'; font-style: normal; font-weight: 400; font-display: swap; src: url('fonts/ibm-plex-mono-latin-400-normal.woff2') format('woff2'); }
+      @font-face { font-family: 'IBM Plex Mono'; font-style: normal; font-weight: 500; font-display: swap; src: url('fonts/ibm-plex-mono-latin-500-normal.woff2') format('woff2'); }
+      @font-face { font-family: 'IBM Plex Mono'; font-style: normal; font-weight: 600; font-display: swap; src: url('fonts/ibm-plex-mono-latin-600-normal.woff2') format('woff2'); }
+
+      /* Design tokens — light default (:root) + dark ([data-theme="dark"]), values from Ledger.dc.html. */
+      :root {
+        --bg: #f1eee7;
+        --surface: #faf8f3;
+        --surface2: #f4f1ea;
+        --chip: rgba(34, 30, 25, 0.055);
+        --ink: #211d18;
+        --on-accent: #ffffff;
+        --ink2: #5c554b;
+        --ink3: #928a7e;
+        --hair: rgba(34, 30, 25, 0.13);
+        --hair2: rgba(34, 30, 25, 0.07);
+        --accent: #38618c;
+        --focus: #38618c;
+        --pos: #4c7a56;
+        --neg: #a24b3a;
+        --warn: #977b39;
+        --cmpa: #3c5a86;
+        --cmpb: #b07f3c;
+        --c-house: #556388;
+        --c-groc: #4d7a74;
+        --c-rest: #845f86;
+        --c-trans: #96794c;
+        --c-util: #66738c;
+        --c-shop: #8a6a5e;
+        --c-travel: #3d7f91;
+        --c-health: #a15c66;
+        --c-ent: #6d5f9e;
+        --c-ins: #6f7a4b;
+        --c-tax: #9a5f45;
+        --c-other: #938b81;
+        --posbg: rgba(76, 122, 86, 0.12);
+        --negbg: rgba(162, 75, 58, 0.12);
+        --warnbg: rgba(151, 123, 57, 0.14);
+      }
+      [data-theme='dark'] {
+        --bg: #151310;
+        --surface: #1e1b17;
+        --surface2: #26221c;
+        --chip: rgba(240, 236, 227, 0.06);
+        --ink: #f0ece3;
+        --on-accent: #151310;
+        --ink2: #b4ada1;
+        --ink3: #847c70;
+        --hair: rgba(240, 236, 227, 0.15);
+        --hair2: rgba(240, 236, 227, 0.08);
+        --accent: #7ea3cc;
+        --focus: #7ea3cc;
+        --pos: #71a67d;
+        --neg: #cf7c69;
+        --warn: #c6a25c;
+        --cmpa: #7f9bcf;
+        --cmpb: #d0a25c;
+        --c-house: #8697bf;
+        --c-groc: #6fa79f;
+        --c-rest: #b48fb6;
+        --c-trans: #c3a06a;
+        --c-util: #8f9cb6;
+        --c-shop: #bb958a;
+        --c-travel: #6ba8ba;
+        --c-health: #c88894;
+        --c-ent: #9689c6;
+        --c-ins: #9aa673;
+        --c-tax: #c08a6d;
+        --c-other: #a79e93;
+        --posbg: rgba(113, 166, 125, 0.16);
+        --negbg: rgba(207, 124, 105, 0.16);
+        --warnbg: rgba(198, 162, 92, 0.16);
+      }
+      html,
+      body {
+        margin: 0;
+      }
+      body {
+        background: var(--bg);
+        color: var(--ink);
+        font-family: 'IBM Plex Sans', system-ui, sans-serif;
+        font-variant-numeric: tabular-nums lining-nums;
+        -webkit-font-smoothing: antialiased;
+        -moz-osx-font-smoothing: grayscale;
+      }
+      a {
+        color: var(--accent);
+        text-decoration: underline;
+        text-underline-offset: 2px;
+      }
+      a:hover {
+        color: var(--ink);
+      }
+      input {
+        font-family: inherit;
+        font-variant-numeric: tabular-nums lining-nums;
+      }
+      input[type='range'] {
+        accent-color: var(--accent);
+      }
+      button {
+        font-family: inherit;
+      }
+      /* Keyboard focus. Nothing in the app drew a focus ring, and two inline styles set
+         outline:none — so a keyboard user had no way to see where they were. :focus-visible
+         paints only for keyboard/AT focus, so pointer users see no change. */
+      :focus-visible {
+        outline: 2px solid var(--focus);
+        outline-offset: 2px;
+        border-radius: 2px;
+      }
+      /* Inline styles cannot express :focus-visible, so the two underlined inputs opt in here. */
+      .focusable:focus-visible {
+        outline: 2px solid var(--focus);
+        outline-offset: 2px;
+      }
+      @keyframes rise {
+        from {
+          opacity: 0;
+          transform: translateY(6px);
+        }
+        to {
+          opacity: 1;
+          transform: none;
+        }
+      }
+      .rise {
+        animation: rise 0.34s cubic-bezier(0.2, 0.7, 0.3, 1) both;
+      }
+      @media (prefers-reduced-motion: reduce) {
+        *,
+        *::before,
+        *::after {
+          animation-duration: 0.01ms !important;
+          transition-duration: 0.01ms !important;
+        }
+      }
+      @keyframes toastIn {
+        from {
+          opacity: 0;
+          transform: translateY(8px);
+        }
+        to {
+          opacity: 1;
+          transform: translateY(0);
+        }
+      }
+      @keyframes modalIn {
+        from {
+          opacity: 0;
+          transform: translate(-50%, -48%);
+        }
+        to {
+          opacity: 1;
+          transform: translate(-50%, -50%);
+        }
+      }
+      @keyframes sheetIn {
+        from {
+          opacity: 0;
+          transform: translateX(12px);
+        }
+        to {
+          opacity: 1;
+          transform: translateX(0);
+        }
+      }
+      /* Bottom sheets rise; side drawers slide in from the right (sheetIn, above). */
+      @keyframes sheetUp {
+        from {
+          transform: translateY(14px);
+        }
+        to {
+          transform: translateY(0);
+        }
+      }
+      @keyframes scrimIn {
+        from {
+          opacity: 0;
+        }
+        to {
+          opacity: 1;
+        }
+      }
+      /* Hover styles only where hovering is a thing. A touch browser applies :hover on tap and
+         leaves it applied until something else is tapped — and because these rules carry
+         !important, the stuck state outranks the inline style that should be showing. */
+      @media (hover: hover) and (pointer: fine) {
+        .hov-ink:hover {
+          color: var(--ink) !important;
+          border-color: var(--ink) !important;
+        }
+        .hov-accent:hover {
+          color: var(--accent) !important;
+          border-color: var(--accent) !important;
+        }
+        .hov-dark:hover {
+          background: var(--surface2) !important;
+        }
+        .hov-invert:hover {
+          background: var(--ink) !important;
+          color: var(--bg) !important;
+        }
+        .hov-border:hover {
+          border-color: var(--ink) !important;
+        }
+        .hov-link:hover {
+          color: var(--ink) !important;
+          text-decoration: underline;
+          text-underline-offset: 3px;
+        }
+      }
+
+      /* ── Phone floor ────────────────────────────────────────────────────────────────────
+         Styling in this app is inline style objects, which no @media rule can reach — except
+         through these two cascade facts:
+           · author !important outranks a normal inline style, and React cannot write
+             !important, so a rule here can override any inline value;
+           · min-height constrains the used value of height, so it wins over an inline
+             `height` without needing !important at all.
+         That covers the cross-cutting *value* floors. Anything structural (stacking a grid,
+         a row becoming a card) needs a different DOM tree and lives in src/ui/responsive.ts. */
+      @media (max-width: 719px) {
+        /* iOS Safari zooms the whole page when a field under 16px takes focus, and does not
+           zoom back out. 59 inputs across ~20 files are affected; this is one line. */
+        input:not([type='checkbox']):not([type='radio']):not([type='range']),
+        select,
+        textarea {
+          font-size: 16px !important;
+        }
+        /* Form fields genuinely should be taller on a phone — you type into them. */
+        select,
+        textarea,
+        input:not([type='checkbox']):not([type='radio']) {
+          min-height: 44px;
+        }
+        /* BRIEF §275 asks for ≥44-pt touch targets. It does NOT ask for 44-pt *buttons*, and
+           the difference is the whole design: inflating the boxes turned every "?" into a
+           44px circle, every ⠿ handle into a 44px slab, and pushed "Year in review" onto two
+           lines. What a finger needs is a 44px TARGET, so each control gets an invisible one
+           centred on it while the drawn control keeps its size.
+           `max()` means a control already ≥44px is unchanged, and nothing here affects
+           layout — the pseudo-element is out of flow, so no box moves. */
+        button,
+        [role='button'],
+        a[href] {
+          position: relative;
+        }
+        button::after,
+        [role='button']::after,
+        a[href]::after {
+          content: '';
+          position: absolute;
+          top: 50%;
+          left: 50%;
+          width: max(100%, 44px);
+          height: max(100%, 44px);
+          transform: translate(-50%, -50%);
+          /* Purely a target: no paint.
+             NOT applied to a <label> wrapping a checkbox — those are already sized to 44px
+             inline, and an overlay there paints on top of the input and swallows the click the
+             label exists to forward. */
+          pointer-events: auto;
+        }
+        html {
+          -webkit-text-size-adjust: 100%;
+        }
+        body {
+          overscroll-behavior-y: contain;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

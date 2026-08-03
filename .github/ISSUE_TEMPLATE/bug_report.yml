@@ -1,0 +1,93 @@
+name: Bug report
+description: Something behaves incorrectly
+labels: ["type:bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        ### Before you write anything: no real financial data, please
+
+        **Do not paste a real statement, account number, IBAN, card number or anyone's name.**
+        Describe the shape of the problem instead, or attach a file you have redacted yourself.
+        Issues containing real personal data will be edited or removed.
+
+        Ledger stores everything on your device — the maintainer cannot look at your data, so a
+        clear description is genuinely all there is to go on.
+
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened
+      description: What you did, what you expected, and what you got instead.
+      placeholder: |
+        I imported a statement and expected the closing balance to reconcile, but the review
+        screen said the totals did not match.
+    validations:
+      required: true
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      value: |
+        1.
+        2.
+        3.
+    validations:
+      required: true
+
+  - type: dropdown
+    id: browser
+    attributes:
+      label: Browser
+      description: Sync behaviour differs by browser, so this matters more than usual.
+      options:
+        - Chrome / Chromium
+        - Edge
+        - Firefox
+        - Safari
+        - Mobile Chrome (Android)
+        - Mobile Safari (iOS)
+        - Other
+    validations:
+      required: true
+
+  - type: input
+    id: version
+    attributes:
+      label: App version
+      description: From Settings, or the release tag you are running. "hosted site" is fine.
+      placeholder: v0.1.0
+    validations:
+      required: true
+
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      options:
+        - Import (reading a statement)
+        - Sync (Google Drive or vault file)
+        - Transactions / categorization
+        - Analytics, trends, comparisons
+        - Budgets and goals
+        - Trips
+        - Assistant
+        - Something else
+    validations:
+      required: true
+
+  - type: textarea
+    id: console
+    attributes:
+      label: Console output
+      description: Any errors from the browser console. Redact anything identifying.
+      render: text
+
+  - type: checkboxes
+    id: confirm
+    attributes:
+      label: Confirmation
+      options:
+        - label: This report contains no real account numbers, statements or personal names.
+          required: true

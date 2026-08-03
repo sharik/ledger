@@ -1,0 +1,152 @@
+[
+  {
+    "bookedDate": "2025-02-01",
+    "amountMinor": 438186,
+    "currency": "UAH",
+    "original": {
+      "amount": 100,
+      "currency": "EUR"
+    },
+    "merchant": "VUGUMELO KENAWI",
+    "normDesc": "ПОВЕРНЕННЯКОШТІВ|VUGUMELOKENAWIFRFR|86011331****6502|09:48:58",
+    "kind": "refund",
+    "sourceLine": 0,
+    "raw": "VUGUMELO KENAWI FRFR · Повернення коштів · 86011331****6502"
+  },
+  {
+    "bookedDate": "2025-02-01",
+    "amountMinor": -438186,
+    "currency": "UAH",
+    "original": {
+      "amount": -100,
+      "currency": "EUR"
+    },
+    "merchant": "VUGUMELO KENAWI",
+    "normDesc": "ПОКУПКА|VUGUMELOKENAWIFRFR|86011331****6502|09:48:58",
+    "kind": "expense",
+    "sourceLine": 1,
+    "raw": "VUGUMELO KENAWI FRFR · Покупка · 86011331****6502"
+  },
+  {
+    "bookedDate": "2025-02-02",
+    "amountMinor": -37044,
+    "currency": "UAH",
+    "original": {
+      "amount": -8.45,
+      "currency": "EUR"
+    },
+    "merchant": "RACE BEMADU KENAWI",
+    "normDesc": "ПОКУПКА|RACEBEMADUKENAWIFRFR|86011331****6502|19:49:05",
+    "kind": "expense",
+    "sourceLine": 2,
+    "raw": "RACE BEMADU KENAWI FRFR · Покупка · 86011331****6502"
+  },
+  {
+    "bookedDate": "2025-02-03",
+    "amountMinor": -10500,
+    "currency": "UAH",
+    "original": {
+      "amount": -2.4,
+      "currency": "EUR"
+    },
+    "merchant": "SEDUZOROGO SUD WUKAMIJU",
+    "normDesc": "ПОКУПКА|SEDUZOROGOSUDWUKAMIJUFRFR|86011331****6502|09:00:48",
+    "kind": "expense",
+    "sourceLine": 3,
+    "raw": "SEDUZOROGO SUD WUKAMIJU FRFR · Покупка · 86011331****6502"
+  },
+  {
+    "bookedDate": "2025-02-03",
+    "amountMinor": -72912,
+    "currency": "UAH",
+    "original": {
+      "amount": -16.64,
+      "currency": "EUR"
+    },
+    "merchant": "BUPAM CAR KENAWI",
+    "normDesc": "ПОКУПКА|BUPAMCARKENAWIFRFR|86011331****6502|10:40:26",
+    "kind": "expense",
+    "sourceLine": 4,
+    "raw": "BUPAM CAR KENAWI FRFR · Покупка · 86011331****6502"
+  },
+  {
+    "bookedDate": "2025-02-04",
+    "amountMinor": -2184,
+    "currency": "UAH",
+    "original": {
+      "amount": -0.5,
+      "currency": "EUR"
+    },
+    "merchant": "WOL*HICE 3VOP XUPIRIWE Riwah",
+    "normDesc": "ПОКУПКА|WOL*HICE3VOPXUPIRIWERIWAHFRFR|86011331****6502|17:12:13",
+    "kind": "expense",
+    "sourceLine": 5,
+    "raw": "WOL*HICE 3VOP XUPIRIWE Riwah FRFR · Покупка · 86011331****6502"
+  },
+  {
+    "bookedDate": "2025-02-22",
+    "amountMinor": -48478,
+    "currency": "UAH",
+    "merchant": "JOE & THE BEGIN HIA BICI",
+    "normDesc": "ПОКУПКА|JOE&THEBEGINHIABICIQAQA|86011331****6502|13:14:52",
+    "kind": "expense",
+    "sourceLine": 6,
+    "raw": "JOE & THE BEGIN HIA BICI QAQA · Покупка · 86011331****6502"
+  },
+  {
+    "bookedDate": "2025-02-22",
+    "amountMinor": -286177,
+    "currency": "UAH",
+    "original": {
+      "amount": -65,
+      "currency": "EUR"
+    },
+    "merchant": "CojAs *Wado Jutife Nu Wuceha-pedu",
+    "normDesc": "ПОКУПКА|COJAS*WADOJUTIFENUWUCEHA-PEDU-BFRFR|86011331****6502|22:09:11",
+    "kind": "expense",
+    "sourceLine": 7,
+    "raw": "CojAs *Wado Jutife Nu Wuceha-pedu- BFRFR · Покупка · 86011331****6502"
+  },
+  {
+    "bookedDate": "2025-02-22",
+    "amountMinor": -24344,
+    "currency": "UAH",
+    "original": {
+      "amount": -5.53,
+      "currency": "EUR"
+    },
+    "merchant": "TABARUV D HONOK H LOXA RIWAH 14",
+    "normDesc": "ПОКУПКА|TABARUVDHONOKHLOXARIWAH14FRFR|86011331****6502|22:12:00",
+    "kind": "expense",
+    "sourceLine": 8,
+    "raw": "TABARUV D HONOK H LOXA RIWAH 14 FRFR · Покупка · 86011331****6502"
+  },
+  {
+    "bookedDate": "2025-02-27",
+    "amountMinor": -787805,
+    "currency": "UAH",
+    "original": {
+      "amount": -179.04,
+      "currency": "EUR"
+    },
+    "merchant": "AIR POLAHA MOVUSA CDG",
+    "normDesc": "ПОКУПКА|AIRPOLAHAMOVUSACDGCEFRFR|86011331****7834|14:54:08",
+    "kind": "expense",
+    "sourceLine": 9,
+    "raw": "AIR POLAHA MOVUSA CDG CEFRFR · Покупка · 86011331****7834"
+  },
+  {
+    "bookedDate": "2025-02-27",
+    "amountMinor": -212971,
+    "currency": "UAH",
+    "original": {
+      "amount": -48.4,
+      "currency": "EUR"
+    },
+    "merchant": "Maxofege Riwah",
+    "normDesc": "ПОКУПКА|MAXOFEGERIWAHFRFR|86011331****7834|17:10:17",
+    "kind": "expense",
+    "sourceLine": 10,
+    "raw": "Maxofege Riwah FRFR · Покупка · 86011331****7834"
+  }
+]

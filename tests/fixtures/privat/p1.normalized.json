@@ -1,0 +1,1106 @@
+[
+  {
+    "bookedDate": "2025-01-01",
+    "amountMinor": -25424,
+    "currency": "UAH",
+    "original": {
+      "amount": -6,
+      "currency": "USD"
+    },
+    "merchant": "Dibuzub",
+    "normDesc": "DIBUZUB",
+    "kind": "expense",
+    "bankCategory": "Entertainment",
+    "balanceAfterMinor": -45511,
+    "sourceLine": 0,
+    "raw": "Dibuzub"
+  },
+  {
+    "bookedDate": "2025-01-03",
+    "amountMinor": -395595,
+    "currency": "UAH",
+    "original": {
+      "amount": -89.8,
+      "currency": "EUR"
+    },
+    "merchant": "XOTATUS DEL MET, RICEB",
+    "normDesc": "XOTATUS DEL MET, RICEB",
+    "kind": "expense",
+    "balanceAfterMinor": -441106,
+    "sourceLine": 1,
+    "raw": "XOTATUS DEL MET, RICEB"
+  },
+  {
+    "bookedDate": "2025-01-03",
+    "amountMinor": 700000,
+    "currency": "UAH",
+    "merchant": "pani NOSIWADA PUGITAGIG",
+    "normDesc": "PANI NOSIWADA PUGITAGIG",
+    "counterparty": "pani NOSIWADA PUGITAGIG",
+    "kind": "transfer-in",
+    "balanceAfterMinor": 258894,
+    "sourceLine": 2,
+    "raw": "pani NOSIWADA PUGITAGIG"
+  },
+  {
+    "bookedDate": "2025-01-03",
+    "amountMinor": -100000,
+    "currency": "UAH",
+    "merchant": "To xu zimo *1705",
+    "normDesc": "TO XU ZIMO *1705",
+    "counterparty": "xu zimo *1705",
+    "kind": "transfer-out",
+    "balanceAfterMinor": 158894,
+    "sourceLine": 3,
+    "raw": "To xu zimo *1705"
+  },
+  {
+    "bookedDate": "2025-01-07",
+    "amountMinor": -311156,
+    "currency": "UAH",
+    "original": {
+      "amount": -70.01,
+      "currency": "EUR"
+    },
+    "merchant": "Wijuha",
+    "normDesc": "WIJUHA",
+    "kind": "expense",
+    "bankCategory": "Groceries",
+    "balanceAfterMinor": -152262,
+    "sourceLine": 4,
+    "raw": "Wijuha"
+  },
+  {
+    "bookedDate": "2025-01-09",
+    "amountMinor": -156520,
+    "currency": "UAH",
+    "original": {
+      "amount": -35.53,
+      "currency": "EUR"
+    },
+    "merchant": "Wijuha",
+    "normDesc": "WIJUHA",
+    "kind": "expense",
+    "bankCategory": "Groceries",
+    "balanceAfterMinor": -308782,
+    "sourceLine": 5,
+    "raw": "Wijuha"
+  },
+  {
+    "bookedDate": "2025-01-10",
+    "amountMinor": -386696,
+    "currency": "UAH",
+    "original": {
+      "amount": -87.78,
+      "currency": "EUR"
+    },
+    "merchant": "Buge",
+    "normDesc": "BUGE",
+    "kind": "expense",
+    "bankCategory": "Dining out",
+    "balanceAfterMinor": -695478,
+    "sourceLine": 6,
+    "raw": "Buge"
+  },
+  {
+    "bookedDate": "2025-01-10",
+    "amountMinor": -53568,
+    "currency": "UAH",
+    "original": {
+      "amount": -12.16,
+      "currency": "EUR"
+    },
+    "merchant": "Wijuha",
+    "normDesc": "WIJUHA",
+    "kind": "expense",
+    "bankCategory": "Groceries",
+    "balanceAfterMinor": -749046,
+    "sourceLine": 7,
+    "raw": "Wijuha"
+  },
+  {
+    "bookedDate": "2025-01-12",
+    "amountMinor": -1191316,
+    "currency": "UAH",
+    "original": {
+      "amount": -271.62,
+      "currency": "EUR"
+    },
+    "merchant": "vekisun.won, Hedacovez",
+    "normDesc": "VEKISUN.WON, HEDACOVEZ",
+    "kind": "expense",
+    "bankCategory": "Travel",
+    "balanceAfterMinor": -1940362,
+    "sourceLine": 8,
+    "raw": "vekisun.won, Hedacovez"
+  },
+  {
+    "bookedDate": "2025-01-12",
+    "amountMinor": 2000000,
+    "currency": "UAH",
+    "merchant": "pani NOSIWADA PUGITAGIG",
+    "normDesc": "PANI NOSIWADA PUGITAGIG",
+    "counterparty": "pani NOSIWADA PUGITAGIG",
+    "kind": "transfer-in",
+    "balanceAfterMinor": 59638,
+    "sourceLine": 9,
+    "raw": "pani NOSIWADA PUGITAGIG"
+  },
+  {
+    "bookedDate": "2025-01-12",
+    "amountMinor": -1589342,
+    "currency": "UAH",
+    "original": {
+      "amount": -362.37,
+      "currency": "EUR"
+    },
+    "merchant": "Vekisun     ZE87LE, HEDACOVEZ",
+    "normDesc": "VEKISUN ZE87LE, HEDACOVEZ",
+    "kind": "expense",
+    "bankCategory": "Travel",
+    "balanceAfterMinor": -1529704,
+    "sourceLine": 10,
+    "raw": "Vekisun     ZE87LE, HEDACOVEZ"
+  },
+  {
+    "bookedDate": "2025-01-17",
+    "amountMinor": -328070,
+    "currency": "UAH",
+    "original": {
+      "amount": -74.8,
+      "currency": "EUR"
+    },
+    "merchant": "VAX SELU JEDA, Kenawi",
+    "normDesc": "VAX SELU JEDA, KENAWI",
+    "kind": "expense",
+    "bankCategory": "Dining out",
+    "balanceAfterMinor": -1857774,
+    "sourceLine": 11,
+    "raw": "VAX SELU JEDA, Kenawi"
+  },
+  {
+    "bookedDate": "2025-01-18",
+    "amountMinor": -49744,
+    "currency": "UAH",
+    "original": {
+      "amount": -9.5,
+      "currency": "GBP"
+    },
+    "merchant": "GEBOMU, +8466808935",
+    "normDesc": "GEBOMU, +8466808935",
+    "kind": "expense",
+    "bankCategory": "Entertainment",
+    "balanceAfterMinor": -1907518,
+    "sourceLine": 12,
+    "raw": "GEBOMU, +8466808935"
+  },
+  {
+    "bookedDate": "2025-01-19",
+    "amountMinor": -17895,
+    "currency": "UAH",
+    "original": {
+      "amount": -4.08,
+      "currency": "EUR"
+    },
+    "merchant": "LIDI FU* BE3SU7, +17460093515",
+    "normDesc": "LIDI FU* BE3SU7, +17460093515",
+    "kind": "expense",
+    "balanceAfterMinor": -1925413,
+    "sourceLine": 13,
+    "raw": "LIDI FU* BE3SU7, +17460093515"
+  },
+  {
+    "bookedDate": "2025-01-24",
+    "amountMinor": 2500000,
+    "currency": "UAH",
+    "merchant": "pani NOSIWADA PUGITAGIG",
+    "normDesc": "PANI NOSIWADA PUGITAGIG",
+    "counterparty": "pani NOSIWADA PUGITAGIG",
+    "kind": "transfer-in",
+    "balanceAfterMinor": 574587,
+    "sourceLine": 14,
+    "raw": "pani NOSIWADA PUGITAGIG"
+  },
+  {
+    "bookedDate": "2025-01-24",
+    "amountMinor": -2860885,
+    "currency": "UAH",
+    "original": {
+      "amount": -646.56,
+      "currency": "EUR"
+    },
+    "merchant": "Xohi japi fahegob, Jacipud",
+    "normDesc": "XOHI JAPI FAHEGOB, JACIPUD",
+    "kind": "expense",
+    "bankCategory": "Travel",
+    "balanceAfterMinor": -2286298,
+    "sourceLine": 15,
+    "raw": "Xohi japi fahegob, Jacipud"
+  },
+  {
+    "bookedDate": "2025-01-24",
+    "amountMinor": 3000000,
+    "currency": "UAH",
+    "merchant": "pani NOSIWADA PUGITAGIG",
+    "normDesc": "PANI NOSIWADA PUGITAGIG",
+    "counterparty": "pani NOSIWADA PUGITAGIG",
+    "kind": "transfer-in",
+    "balanceAfterMinor": 713702,
+    "sourceLine": 16,
+    "raw": "pani NOSIWADA PUGITAGIG"
+  },
+  {
+    "bookedDate": "2025-01-24",
+    "amountMinor": -400000,
+    "currency": "UAH",
+    "merchant": "To xu zimo *1705",
+    "normDesc": "TO XU ZIMO *1705",
+    "counterparty": "xu zimo *1705",
+    "kind": "transfer-out",
+    "balanceAfterMinor": 313702,
+    "sourceLine": 17,
+    "raw": "To xu zimo *1705"
+  },
+  {
+    "bookedDate": "2025-01-28",
+    "amountMinor": -312455,
+    "currency": "UAH",
+    "original": {
+      "amount": -69.99,
+      "currency": "EUR"
+    },
+    "merchant": "Vekisun     SIXONU, HEDACOVEZ",
+    "normDesc": "VEKISUN SIXONU, HEDACOVEZ",
+    "kind": "expense",
+    "bankCategory": "Travel",
+    "balanceAfterMinor": 1247,
+    "sourceLine": 18,
+    "raw": "Vekisun     SIXONU, HEDACOVEZ"
+  },
+  {
+    "bookedDate": "2025-01-28",
+    "amountMinor": -110222,
+    "currency": "UAH",
+    "original": {
+      "amount": -24.8,
+      "currency": "EUR"
+    },
+    "merchant": "Bof Rixiwol me Mawecaz, Peripew",
+    "normDesc": "BOF RIXIWOL ME MAWECAZ, PERIPEW",
+    "kind": "expense",
+    "bankCategory": "Dining out",
+    "balanceAfterMinor": -108975,
+    "sourceLine": 19,
+    "raw": "Bof Rixiwol me Mawecaz, Peripew"
+  },
+  {
+    "bookedDate": "2025-01-29",
+    "amountMinor": -322478,
+    "currency": "UAH",
+    "original": {
+      "amount": -72.88,
+      "currency": "EUR"
+    },
+    "merchant": "Wijuha",
+    "normDesc": "WIJUHA",
+    "kind": "expense",
+    "bankCategory": "Groceries",
+    "balanceAfterMinor": -431453,
+    "sourceLine": 20,
+    "raw": "Wijuha"
+  },
+  {
+    "bookedDate": "2025-01-30",
+    "amountMinor": -370044,
+    "currency": "UAH",
+    "original": {
+      "amount": -84,
+      "currency": "EUR"
+    },
+    "merchant": "HIGA-LIPALOLIF, RIWAH 12",
+    "normDesc": "HIGA-LIPALOLIF, RIWAH 12",
+    "kind": "expense",
+    "bankCategory": "Transport",
+    "balanceAfterMinor": -801497,
+    "sourceLine": 21,
+    "raw": "HIGA-LIPALOLIF, RIWAH 12"
+  },
+  {
+    "bookedDate": "2025-02-01",
+    "amountMinor": -25210,
+    "currency": "UAH",
+    "original": {
+      "amount": -6,
+      "currency": "USD"
+    },
+    "merchant": "Dibuzub",
+    "normDesc": "DIBUZUB",
+    "kind": "expense",
+    "bankCategory": "Entertainment",
+    "balanceAfterMinor": -826707,
+    "sourceLine": 22,
+    "raw": "Dibuzub"
+  },
+  {
+    "bookedDate": "2025-02-03",
+    "amountMinor": -575217,
+    "currency": "UAH",
+    "original": {
+      "amount": -132.3,
+      "currency": "EUR"
+    },
+    "merchant": "Fahegob",
+    "normDesc": "FAHEGOB",
+    "kind": "expense",
+    "bankCategory": "Travel",
+    "balanceAfterMinor": -1401924,
+    "sourceLine": 23,
+    "raw": "Fahegob"
+  },
+  {
+    "bookedDate": "2025-02-04",
+    "amountMinor": -8174,
+    "currency": "UAH",
+    "original": {
+      "amount": -1.88,
+      "currency": "EUR"
+    },
+    "merchant": "LIDI FU* GUPEWU, +17460093515",
+    "normDesc": "LIDI FU* GUPEWU, +17460093515",
+    "kind": "expense",
+    "balanceAfterMinor": -1410098,
+    "sourceLine": 24,
+    "raw": "LIDI FU* GUPEWU, +17460093515"
+  },
+  {
+    "bookedDate": "2025-02-04",
+    "amountMinor": -14869,
+    "currency": "UAH",
+    "original": {
+      "amount": -3.42,
+      "currency": "EUR"
+    },
+    "merchant": "LIDI FU* MAFUCA, +17460093515",
+    "normDesc": "LIDI FU* MAFUCA, +17460093515",
+    "kind": "expense",
+    "balanceAfterMinor": -1424967,
+    "sourceLine": 25,
+    "raw": "LIDI FU* MAFUCA, +17460093515"
+  },
+  {
+    "bookedDate": "2025-02-04",
+    "amountMinor": 4500000,
+    "currency": "UAH",
+    "merchant": "pani NOSIWADA PUGITAGIG",
+    "normDesc": "PANI NOSIWADA PUGITAGIG",
+    "counterparty": "pani NOSIWADA PUGITAGIG",
+    "kind": "transfer-in",
+    "balanceAfterMinor": 3075033,
+    "sourceLine": 26,
+    "raw": "pani NOSIWADA PUGITAGIG"
+  },
+  {
+    "bookedDate": "2025-02-04",
+    "amountMinor": -4132087,
+    "currency": "UAH",
+    "original": {
+      "amount": -950.38,
+      "currency": "EUR"
+    },
+    "merchant": "Nexebu",
+    "normDesc": "NEXEBU",
+    "kind": "expense",
+    "bankCategory": "Travel",
+    "balanceAfterMinor": -1057054,
+    "sourceLine": 27,
+    "raw": "Nexebu"
+  },
+  {
+    "bookedDate": "2025-02-06",
+    "amountMinor": 14431,
+    "currency": "UAH",
+    "original": {
+      "amount": 3.42,
+      "currency": "EUR"
+    },
+    "merchant": "SOKIKEM, HOLIBOVAG ZIHUFU PAN XADAKAM ROTOMIZO, SOJIJACAD ZIHUFU, SEKU ZIHUFU",
+    "normDesc": "SOKIKEM, HOLIBOVAG ZIHUFU PAN XADAKAM ROTOMIZO, SOJIJACAD ZIHUFU, SEKU ZIHUFU",
+    "kind": "refund",
+    "balanceAfterMinor": -1042623,
+    "sourceLine": 28,
+    "raw": "SOKIKEM, HOLIBOVAG ZIHUFU PAN XADAKAM ROTOMIZO, SOJIJACAD ZIHUFU, SEKU ZIHUFU"
+  },
+  {
+    "bookedDate": "2025-02-06",
+    "amountMinor": 7939,
+    "currency": "UAH",
+    "original": {
+      "amount": 1.88,
+      "currency": "EUR"
+    },
+    "merchant": "SOKIKEM, HOLIBOVAG ZIHUFU PAN XADAKAM ROTOMIZO, SOJIJACAD ZIHUFU, SEKU ZIHUFU",
+    "normDesc": "SOKIKEM, HOLIBOVAG ZIHUFU PAN XADAKAM ROTOMIZO, SOJIJACAD ZIHUFU, SEKU ZIHUFU",
+    "kind": "refund",
+    "balanceAfterMinor": -1034684,
+    "sourceLine": 29,
+    "raw": "SOKIKEM, HOLIBOVAG ZIHUFU PAN XADAKAM ROTOMIZO, SOJIJACAD ZIHUFU, SEKU ZIHUFU"
+  },
+  {
+    "bookedDate": "2025-02-09",
+    "amountMinor": -472870,
+    "currency": "UAH",
+    "original": {
+      "amount": -108.76,
+      "currency": "EUR"
+    },
+    "merchant": "Wijuha",
+    "normDesc": "WIJUHA",
+    "kind": "expense",
+    "bankCategory": "Groceries",
+    "balanceAfterMinor": -1507554,
+    "sourceLine": 30,
+    "raw": "Wijuha"
+  },
+  {
+    "bookedDate": "2025-02-12",
+    "amountMinor": -716070,
+    "currency": "UAH",
+    "original": {
+      "amount": -163.98,
+      "currency": "EUR"
+    },
+    "merchant": "Wijuha",
+    "normDesc": "WIJUHA",
+    "kind": "expense",
+    "bankCategory": "Groceries",
+    "balanceAfterMinor": -2223624,
+    "sourceLine": 31,
+    "raw": "Wijuha"
+  },
+  {
+    "bookedDate": "2025-02-16",
+    "amountMinor": 3000000,
+    "currency": "UAH",
+    "merchant": "pani NOSIWADA PUGITAGIG",
+    "normDesc": "PANI NOSIWADA PUGITAGIG",
+    "counterparty": "pani NOSIWADA PUGITAGIG",
+    "kind": "transfer-in",
+    "balanceAfterMinor": 776376,
+    "sourceLine": 32,
+    "raw": "pani NOSIWADA PUGITAGIG"
+  },
+  {
+    "bookedDate": "2025-02-16",
+    "amountMinor": -700000,
+    "currency": "UAH",
+    "merchant": "To xu zimo *1705",
+    "normDesc": "TO XU ZIMO *1705",
+    "counterparty": "xu zimo *1705",
+    "kind": "transfer-out",
+    "balanceAfterMinor": 76376,
+    "sourceLine": 33,
+    "raw": "To xu zimo *1705"
+  },
+  {
+    "bookedDate": "2025-02-16",
+    "amountMinor": -18912,
+    "currency": "UAH",
+    "original": {
+      "amount": -4.3,
+      "currency": "EUR"
+    },
+    "merchant": "LIDI FU* WI5N92, +17460093515",
+    "normDesc": "LIDI FU* WI5N92, +17460093515",
+    "kind": "expense",
+    "balanceAfterMinor": 57464,
+    "sourceLine": 34,
+    "raw": "LIDI FU* WI5N92, +17460093515"
+  },
+  {
+    "bookedDate": "2025-02-18",
+    "amountMinor": -2115526,
+    "currency": "UAH",
+    "original": {
+      "amount": -482.34,
+      "currency": "EUR"
+    },
+    "merchant": "Xohi japi fahegob, Vomomi",
+    "normDesc": "XOHI JAPI FAHEGOB, VOMOMI",
+    "kind": "expense",
+    "bankCategory": "Travel",
+    "balanceAfterMinor": -2058062,
+    "sourceLine": 35,
+    "raw": "Xohi japi fahegob, Vomomi"
+  },
+  {
+    "bookedDate": "2025-02-20",
+    "amountMinor": 2000000,
+    "currency": "UAH",
+    "merchant": "pani NOSIWADA PUGITAGIG",
+    "normDesc": "PANI NOSIWADA PUGITAGIG",
+    "counterparty": "pani NOSIWADA PUGITAGIG",
+    "kind": "transfer-in",
+    "balanceAfterMinor": -58062,
+    "sourceLine": 36,
+    "raw": "pani NOSIWADA PUGITAGIG"
+  },
+  {
+    "bookedDate": "2025-02-20",
+    "amountMinor": -356828,
+    "currency": "UAH",
+    "original": {
+      "amount": -81,
+      "currency": "EUR"
+    },
+    "merchant": "Fahegob",
+    "normDesc": "FAHEGOB",
+    "kind": "expense",
+    "bankCategory": "Travel",
+    "balanceAfterMinor": -414890,
+    "sourceLine": 37,
+    "raw": "Fahegob"
+  },
+  {
+    "bookedDate": "2025-02-24",
+    "amountMinor": 2080694,
+    "currency": "UAH",
+    "original": {
+      "amount": 482.34,
+      "currency": "EUR"
+    },
+    "merchant": "SOKIKEM, XOHI HOS ZIHUFU",
+    "normDesc": "SOKIKEM, XOHI HOS ZIHUFU",
+    "kind": "refund",
+    "balanceAfterMinor": 1665804,
+    "sourceLine": 38,
+    "raw": "SOKIKEM, XOHI HOS ZIHUFU"
+  },
+  {
+    "bookedDate": "2025-02-27",
+    "amountMinor": -383260,
+    "currency": "UAH",
+    "original": {
+      "amount": -87,
+      "currency": "EUR"
+    },
+    "merchant": "KOVETEHIT, MIHUF ROHIWAF",
+    "normDesc": "KOVETEHIT, MIHUF ROHIWAF",
+    "kind": "expense",
+    "bankCategory": "Travel",
+    "balanceAfterMinor": 1282544,
+    "sourceLine": 39,
+    "raw": "KOVETEHIT, MIHUF ROHIWAF"
+  },
+  {
+    "bookedDate": "2025-02-27",
+    "amountMinor": -185022,
+    "currency": "UAH",
+    "original": {
+      "amount": -42,
+      "currency": "EUR"
+    },
+    "merchant": "HIGA-LIPALOLIF, RIWAH 12",
+    "normDesc": "HIGA-LIPALOLIF, RIWAH 12",
+    "kind": "expense",
+    "bankCategory": "Transport",
+    "balanceAfterMinor": 1097522,
+    "sourceLine": 40,
+    "raw": "HIGA-LIPALOLIF, RIWAH 12"
+  },
+  {
+    "bookedDate": "2025-03-01",
+    "amountMinor": -337719,
+    "currency": "UAH",
+    "original": {
+      "amount": -77,
+      "currency": "EUR"
+    },
+    "merchant": "Zerarinus Silogec Zapuxa, Sosutu",
+    "normDesc": "ZERARINUS SILOGEC ZAPUXA, SOSUTU",
+    "kind": "expense",
+    "bankCategory": "Travel",
+    "balanceAfterMinor": 759803,
+    "sourceLine": 41,
+    "raw": "Zerarinus Silogec Zapuxa, Sosutu"
+  },
+  {
+    "bookedDate": "2025-03-01",
+    "amountMinor": -25105,
+    "currency": "UAH",
+    "original": {
+      "amount": -6,
+      "currency": "USD"
+    },
+    "merchant": "Dibuzub",
+    "normDesc": "DIBUZUB",
+    "kind": "expense",
+    "bankCategory": "Entertainment",
+    "balanceAfterMinor": 734698,
+    "sourceLine": 42,
+    "raw": "Dibuzub"
+  },
+  {
+    "bookedDate": "2025-03-02",
+    "amountMinor": -1646667,
+    "currency": "UAH",
+    "original": {
+      "amount": -375.44,
+      "currency": "EUR"
+    },
+    "merchant": "Fahegob",
+    "normDesc": "FAHEGOB",
+    "kind": "expense",
+    "bankCategory": "Travel",
+    "balanceAfterMinor": -911969,
+    "sourceLine": 43,
+    "raw": "Fahegob"
+  },
+  {
+    "bookedDate": "2025-03-02",
+    "amountMinor": -1438816,
+    "currency": "UAH",
+    "original": {
+      "amount": -328.05,
+      "currency": "EUR"
+    },
+    "merchant": "Fahegob",
+    "normDesc": "FAHEGOB",
+    "kind": "expense",
+    "bankCategory": "Travel",
+    "balanceAfterMinor": -2350785,
+    "sourceLine": 44,
+    "raw": "Fahegob"
+  },
+  {
+    "bookedDate": "2025-03-02",
+    "amountMinor": 2500000,
+    "currency": "UAH",
+    "merchant": "pani NOSIWADA PUGITAGIG",
+    "normDesc": "PANI NOSIWADA PUGITAGIG",
+    "counterparty": "pani NOSIWADA PUGITAGIG",
+    "kind": "transfer-in",
+    "balanceAfterMinor": 149215,
+    "sourceLine": 45,
+    "raw": "pani NOSIWADA PUGITAGIG"
+  },
+  {
+    "bookedDate": "2025-03-02",
+    "amountMinor": -1324737,
+    "currency": "UAH",
+    "original": {
+      "amount": -302.04,
+      "currency": "EUR"
+    },
+    "merchant": "Cufixef",
+    "normDesc": "CUFIXEF",
+    "kind": "expense",
+    "bankCategory": "Travel",
+    "balanceAfterMinor": -1175522,
+    "sourceLine": 46,
+    "raw": "Cufixef"
+  },
+  {
+    "bookedDate": "2025-03-05",
+    "amountMinor": -16889,
+    "currency": "UAH",
+    "original": {
+      "amount": -3.8,
+      "currency": "EUR"
+    },
+    "merchant": "hec.micugit.won*NIB, Sosutu",
+    "normDesc": "HEC.MICUGIT.WON*NIB, SOSUTU",
+    "kind": "expense",
+    "bankCategory": "Transport",
+    "balanceAfterMinor": -1192411,
+    "sourceLine": 47,
+    "raw": "hec.micugit.won*NIB, Sosutu"
+  },
+  {
+    "bookedDate": "2025-03-05",
+    "amountMinor": -20889,
+    "currency": "UAH",
+    "original": {
+      "amount": -4.7,
+      "currency": "EUR"
+    },
+    "merchant": "hec.micugit.won*NIB, Sosutu",
+    "normDesc": "HEC.MICUGIT.WON*NIB, SOSUTU",
+    "kind": "expense",
+    "bankCategory": "Transport",
+    "balanceAfterMinor": -1213300,
+    "sourceLine": 48,
+    "raw": "hec.micugit.won*NIB, Sosutu"
+  },
+  {
+    "bookedDate": "2025-03-06",
+    "amountMinor": -63229,
+    "currency": "UAH",
+    "original": {
+      "amount": -14.1,
+      "currency": "EUR"
+    },
+    "merchant": "HIGA-LIPALOLIF, RIWAH 12",
+    "normDesc": "HIGA-LIPALOLIF, RIWAH 12",
+    "kind": "expense",
+    "bankCategory": "Transport",
+    "balanceAfterMinor": -1276529,
+    "sourceLine": 49,
+    "raw": "HIGA-LIPALOLIF, RIWAH 12"
+  },
+  {
+    "bookedDate": "2025-03-09",
+    "amountMinor": -746606,
+    "currency": "UAH",
+    "original": {
+      "amount": -165,
+      "currency": "EUR"
+    },
+    "merchant": "HIGA-LIPALOLIF, RIWAH 12",
+    "normDesc": "HIGA-LIPALOLIF, RIWAH 12",
+    "kind": "expense",
+    "bankCategory": "Transport",
+    "balanceAfterMinor": -2023135,
+    "sourceLine": 50,
+    "raw": "HIGA-LIPALOLIF, RIWAH 12"
+  },
+  {
+    "bookedDate": "2025-03-13",
+    "amountMinor": -223744,
+    "currency": "UAH",
+    "original": {
+      "amount": -49,
+      "currency": "EUR"
+    },
+    "merchant": "HIGA-LIPALOLIF, RIWAH 12",
+    "normDesc": "HIGA-LIPALOLIF, RIWAH 12",
+    "kind": "expense",
+    "bankCategory": "Transport",
+    "balanceAfterMinor": -2246879,
+    "sourceLine": 51,
+    "raw": "HIGA-LIPALOLIF, RIWAH 12"
+  },
+  {
+    "bookedDate": "2025-03-13",
+    "amountMinor": -579909,
+    "currency": "UAH",
+    "original": {
+      "amount": -127,
+      "currency": "EUR"
+    },
+    "merchant": "HIGA-LIPALOLIF, RIWAH 12",
+    "normDesc": "HIGA-LIPALOLIF, RIWAH 12",
+    "kind": "expense",
+    "bankCategory": "Transport",
+    "balanceAfterMinor": -2826788,
+    "sourceLine": 52,
+    "raw": "HIGA-LIPALOLIF, RIWAH 12"
+  },
+  {
+    "bookedDate": "2025-03-15",
+    "amountMinor": 2000000,
+    "currency": "UAH",
+    "merchant": "pani NOSIWADA PUGITAGIG",
+    "normDesc": "PANI NOSIWADA PUGITAGIG",
+    "counterparty": "pani NOSIWADA PUGITAGIG",
+    "kind": "transfer-in",
+    "balanceAfterMinor": -826788,
+    "sourceLine": 53,
+    "raw": "pani NOSIWADA PUGITAGIG"
+  },
+  {
+    "bookedDate": "2025-03-15",
+    "amountMinor": -1902273,
+    "currency": "UAH",
+    "original": {
+      "amount": -418.5,
+      "currency": "EUR"
+    },
+    "merchant": "Fahegob",
+    "normDesc": "FAHEGOB",
+    "kind": "expense",
+    "bankCategory": "Travel",
+    "balanceAfterMinor": -2729061,
+    "sourceLine": 54,
+    "raw": "Fahegob"
+  },
+  {
+    "bookedDate": "2025-03-15",
+    "amountMinor": 2000000,
+    "currency": "UAH",
+    "merchant": "pani NOSIWADA PUGITAGIG",
+    "normDesc": "PANI NOSIWADA PUGITAGIG",
+    "counterparty": "pani NOSIWADA PUGITAGIG",
+    "kind": "transfer-in",
+    "balanceAfterMinor": -729061,
+    "sourceLine": 55,
+    "raw": "pani NOSIWADA PUGITAGIG"
+  },
+  {
+    "bookedDate": "2025-03-15",
+    "amountMinor": -1410909,
+    "currency": "UAH",
+    "original": {
+      "amount": -310.4,
+      "currency": "EUR"
+    },
+    "merchant": "HIGA-LIPALOLIF, RIWAH 12",
+    "normDesc": "HIGA-LIPALOLIF, RIWAH 12",
+    "kind": "expense",
+    "bankCategory": "Transport",
+    "balanceAfterMinor": -2139970,
+    "sourceLine": 56,
+    "raw": "HIGA-LIPALOLIF, RIWAH 12"
+  },
+  {
+    "bookedDate": "2025-03-15",
+    "amountMinor": -135045,
+    "currency": "UAH",
+    "original": {
+      "amount": -29.71,
+      "currency": "EUR"
+    },
+    "merchant": "Nexebu",
+    "normDesc": "NEXEBU",
+    "kind": "expense",
+    "bankCategory": "Travel",
+    "balanceAfterMinor": -2275015,
+    "sourceLine": 57,
+    "raw": "Nexebu"
+  },
+  {
+    "bookedDate": "2025-03-17",
+    "amountMinor": -98624,
+    "currency": "UAH",
+    "original": {
+      "amount": -21.5,
+      "currency": "EUR"
+    },
+    "merchant": "HIGA-LIPALOLIF, RIWAH 12",
+    "normDesc": "HIGA-LIPALOLIF, RIWAH 12",
+    "kind": "expense",
+    "bankCategory": "Transport",
+    "balanceAfterMinor": -2373639,
+    "sourceLine": 58,
+    "raw": "HIGA-LIPALOLIF, RIWAH 12"
+  },
+  {
+    "bookedDate": "2025-04-01",
+    "amountMinor": -25000,
+    "currency": "UAH",
+    "original": {
+      "amount": -6,
+      "currency": "USD"
+    },
+    "merchant": "Dibuzub",
+    "normDesc": "DIBUZUB",
+    "kind": "expense",
+    "bankCategory": "Entertainment",
+    "balanceAfterMinor": -2398639,
+    "sourceLine": 59,
+    "raw": "Dibuzub"
+  },
+  {
+    "bookedDate": "2025-04-13",
+    "amountMinor": -260664,
+    "currency": "UAH",
+    "original": {
+      "amount": -55,
+      "currency": "EUR"
+    },
+    "merchant": "Fahegob",
+    "normDesc": "FAHEGOB",
+    "kind": "expense",
+    "bankCategory": "Travel",
+    "balanceAfterMinor": -2659303,
+    "sourceLine": 60,
+    "raw": "Fahegob"
+  },
+  {
+    "bookedDate": "2025-04-14",
+    "amountMinor": -94550,
+    "currency": "UAH",
+    "original": {
+      "amount": -19.95,
+      "currency": "EUR"
+    },
+    "merchant": "Wijuha",
+    "normDesc": "WIJUHA",
+    "kind": "expense",
+    "bankCategory": "Groceries",
+    "balanceAfterMinor": -2753853,
+    "sourceLine": 61,
+    "raw": "Wijuha"
+  },
+  {
+    "bookedDate": "2025-04-16",
+    "amountMinor": -58160,
+    "currency": "UAH",
+    "original": {
+      "amount": -12.33,
+      "currency": "EUR"
+    },
+    "merchant": "Wijuha",
+    "normDesc": "WIJUHA",
+    "kind": "expense",
+    "bankCategory": "Groceries",
+    "balanceAfterMinor": -2812013,
+    "sourceLine": 62,
+    "raw": "Wijuha"
+  },
+  {
+    "bookedDate": "2025-04-18",
+    "amountMinor": -38957,
+    "currency": "UAH",
+    "original": {
+      "amount": -8.22,
+      "currency": "EUR"
+    },
+    "merchant": "Vekisun     ZE87LE, HEDACOVEZ",
+    "normDesc": "VEKISUN ZE87LE, HEDACOVEZ",
+    "kind": "expense",
+    "bankCategory": "Travel",
+    "balanceAfterMinor": -2850970,
+    "sourceLine": 63,
+    "raw": "Vekisun     ZE87LE, HEDACOVEZ"
+  },
+  {
+    "bookedDate": "2025-04-22",
+    "amountMinor": 3030631,
+    "currency": "UAH",
+    "original": {
+      "amount": 646.56,
+      "currency": "EUR"
+    },
+    "merchant": "SOKIKEM, XOHI HOS ZIHUFU",
+    "normDesc": "SOKIKEM, XOHI HOS ZIHUFU",
+    "kind": "refund",
+    "balanceAfterMinor": 179661,
+    "sourceLine": 64,
+    "raw": "SOKIKEM, XOHI HOS ZIHUFU"
+  },
+  {
+    "bookedDate": "2025-04-27",
+    "amountMinor": -59809,
+    "currency": "UAH",
+    "original": {
+      "amount": -12.5,
+      "currency": "EUR"
+    },
+    "merchant": "Tekeso, Noduhopaj",
+    "normDesc": "TEKESO, NODUHOPAJ",
+    "kind": "expense",
+    "bankCategory": "Dining out",
+    "balanceAfterMinor": 119852,
+    "sourceLine": 65,
+    "raw": "Tekeso, Noduhopaj"
+  },
+  {
+    "bookedDate": "2025-05-02",
+    "amountMinor": -85714,
+    "currency": "UAH",
+    "original": {
+      "amount": -18,
+      "currency": "EUR"
+    },
+    "merchant": "HONOK LETU LOKIN MAP, PUGIVA",
+    "normDesc": "HONOK LETU LOKIN MAP, PUGIVA",
+    "kind": "expense",
+    "bankCategory": "Dining out",
+    "balanceAfterMinor": 34138,
+    "sourceLine": 66,
+    "raw": "HONOK LETU LOKIN MAP, PUGIVA"
+  },
+  {
+    "bookedDate": "2025-06-09",
+    "amountMinor": 284429,
+    "currency": "UAH",
+    "original": {
+      "amount": 60.8,
+      "currency": "EUR"
+    },
+    "merchant": "SOKIKEM, MUFAKALIV VEMEROTO",
+    "normDesc": "SOKIKEM, MUFAKALIV VEMEROTO",
+    "kind": "refund",
+    "balanceAfterMinor": 318567,
+    "sourceLine": 67,
+    "raw": "SOKIKEM, MUFAKALIV VEMEROTO"
+  },
+  {
+    "bookedDate": "2025-06-09",
+    "amountMinor": 1076031,
+    "currency": "UAH",
+    "original": {
+      "amount": 230,
+      "currency": "EUR"
+    },
+    "merchant": "SOKIKEM, MUFAKALIV VEMEROTO",
+    "normDesc": "SOKIKEM, MUFAKALIV VEMEROTO",
+    "kind": "refund",
+    "balanceAfterMinor": 1394598,
+    "sourceLine": 68,
+    "raw": "SOKIKEM, MUFAKALIV VEMEROTO"
+  },
+  {
+    "bookedDate": "2025-06-09",
+    "amountMinor": 91682,
+    "currency": "UAH",
+    "original": {
+      "amount": 19.6,
+      "currency": "EUR"
+    },
+    "merchant": "SOKIKEM, MUFAKALIV VEMEROTO",
+    "normDesc": "SOKIKEM, MUFAKALIV VEMEROTO",
+    "kind": "refund",
+    "balanceAfterMinor": 1486280,
+    "sourceLine": 69,
+    "raw": "SOKIKEM, MUFAKALIV VEMEROTO"
+  },
+  {
+    "bookedDate": "2025-06-10",
+    "amountMinor": -176459,
+    "currency": "UAH",
+    "original": {
+      "amount": -36.88,
+      "currency": "EUR"
+    },
+    "merchant": "Wijuha",
+    "normDesc": "WIJUHA",
+    "kind": "expense",
+    "bankCategory": "Groceries",
+    "balanceAfterMinor": 1309821,
+    "sourceLine": 70,
+    "raw": "Wijuha"
+  },
+  {
+    "bookedDate": "2025-06-24",
+    "amountMinor": -39167,
+    "currency": "UAH",
+    "original": {
+      "amount": -7.99,
+      "currency": "EUR"
+    },
+    "merchant": "Fodez Xumew luke fuf, tuli.pe/cijo",
+    "normDesc": "FODEZ XUMEW LUKE FUF, TULI.PE/CIJO",
+    "kind": "expense",
+    "bankCategory": "Entertainment",
+    "balanceAfterMinor": 1270654,
+    "sourceLine": 71,
+    "raw": "Fodez Xumew luke fuf, tuli.pe/cijo"
+  },
+  {
+    "bookedDate": "2025-06-29",
+    "amountMinor": -29653,
+    "currency": "UAH",
+    "original": {
+      "amount": -5.99,
+      "currency": "EUR"
+    },
+    "merchant": "Fodez Xumew luke fuf, tuli.pe/cijo",
+    "normDesc": "FODEZ XUMEW LUKE FUF, TULI.PE/CIJO",
+    "kind": "expense",
+    "bankCategory": "Entertainment",
+    "balanceAfterMinor": 1241001,
+    "sourceLine": 72,
+    "raw": "Fodez Xumew luke fuf, tuli.pe/cijo"
+  }
+]

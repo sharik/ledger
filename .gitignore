@@ -1,0 +1,35 @@
+node_modules/
+dist/
+test-results/
+playwright-report/
+# Mobile-audit measurements + screenshot gallery. Kept out of test-results/ because Playwright
+# empties that directory on every run, which would destroy the data specs/Mobile-Audit.md is
+# generated from.
+.mobile-audit/
+.playwright-mcp/
+*.log
+
+# Machine-local agent/editor config.
+.claude/settings.local.json
+
+# Internal build specs and design sources. They are the working notes this app was built from,
+# not contributor documentation, and several quote real statements verbatim. `docs/` carries the
+# contributor-facing pair (architecture.md, sync.md) instead.
+specs/
+
+# Real personal bank statements — never committed. `expectations.json` beside them holds the
+# holder name and account number those files assert on, so it stays out too; only the template does.
+docs/examples/*
+!docs/examples/expectations.json.example
+!docs/examples/scrub-names.json.example
+
+# Provider API keys for the live assistant e2e run. `.env.test.example` is the committed
+# template; anything holding a real key stays on the machine that owns it.
+.env
+.env.*
+!.env.*.example
+
+# The OAuth client file the Google Cloud Console hands you on download. The app reads its
+# values from .env.local, never from this — it lands here only because that is where the
+# browser puts it, and it carries the client secret.
+client_secret_*.json

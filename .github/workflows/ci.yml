@@ -1,0 +1,113 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  # Called by release.yml, so a release can never publish something that did not pass here.
+  workflow_call:
+
+# A newer push supersedes an in-flight run on the same ref. `main` is excluded from cancellation:
+# its runs are what the release gate reuses.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    name: typecheck, unit tests, build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      - run: npm ci
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      # Includes tests/no-pii.test.ts — the guard that no real name or account identifier reached
+      # the repo. Deliberately not a separate job: it must block everything, not sit beside it.
+      - name: Unit and integration tests
+        run: npx vitest run
+
+      - name: Build
+        run: npm run build
+
+  e2e:
+    name: browser tests
+    runs-on: ubuntu-latest
+    # Pinned to the exact Playwright version in package.json. Screenshot baselines are compared at
+    # a 2% pixel tolerance, and font rendering differs enough between distributions to blow past
+    # that — so the baselines are generated in this same image and compared in it. A floating tag
+    # would silently invalidate all 16 of them.
+    container: mcr.microsoft.com/playwright:v1.61.1-noble
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      - run: npm ci
+
+      # Two exclusions, both deliberate:
+      #
+      # `live` calls a real, paid AI provider and needs a key this workflow does not have. It
+      # self-skips, but naming the projects explicitly keeps the intent visible.
+      #
+      # `mobile audit` is a debt-measuring harness, not a correctness gate: it enumerates every
+      # layout violation at 390/360px and asserts the list is empty. That list is not empty today,
+      # and its contents shift with the calendar because the demo vault is generated relative to
+      # the current date. Running it here would mean a red build that says nothing about the
+      # change under review. It stays a local, deliberate exercise — `npm run mobile:audit` —
+      # which is also the only way its report gets regenerated.
+      #
+      # `mobile-sm` runs that spec and nothing else, so it is excluded with it.
+      - name: Playwright
+        run: npx playwright test --project=desktop --project=mobile --grep-invert "mobile audit"
+        env:
+          HOME: /root
+
+      - uses: actions/upload-artifact@v4
+        if: ${{ !cancelled() }}
+        with:
+          name: playwright-report
+          path: |
+            playwright-report/
+            test-results/
+          retention-days: 7
+
+  smoke:
+    name: production build
+    runs-on: ubuntu-latest
+    # The e2e suite runs against the Vite dev server, because it depends on hooks that
+    # `import.meta.env.DEV` compiles out of a production build. That leaves the artifact we
+    # actually deploy untested — this job is what covers it, and it is why base-path and
+    # Content-Security-Policy mistakes surface here rather than in production.
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      - run: npm run build
+
+      - name: Serve the build from a subpath and exercise it
+        run: |
+          mkdir -p site/ledger && cp -r dist/. site/ledger/
+          npx --yes http-server site -p 8899 --silent &
+          npx --yes wait-on -t 60000 http://127.0.0.1:8899/ledger/
+          node scripts/smoke.mjs http://127.0.0.1:8899/ledger/

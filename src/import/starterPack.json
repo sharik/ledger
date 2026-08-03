@@ -1,0 +1,27 @@
+{
+  "categories": [],
+  "rules": [
+    { "field": "creditorId", "op": "equals", "value": "FR03SYM002381", "category": "Utilities" },
+    { "field": "creditorId", "op": "equals", "value": "FR70ZZZ236497", "category": "Utilities" },
+    { "field": "creditorId", "op": "equals", "value": "FR36ZZZ86EDDA", "category": "Housing" },
+    { "field": "creditorId", "op": "equals", "value": "FR45ZZZ87F911", "category": "Insurance" },
+    { "field": "creditorId", "op": "equals", "value": "FR46ZZZ005002", "category": "Taxes & fees" },
+    { "field": "creditorId", "op": "equals", "value": "FR47ZZZ476016", "category": "Utilities" },
+    { "field": "counterparty", "op": "prefix", "value": "ENGIE", "category": "Utilities" },
+    { "field": "counterparty", "op": "prefix", "value": "SUEZ", "category": "Utilities" },
+    { "field": "counterparty", "op": "prefix", "value": "ACHEEL", "category": "Insurance" },
+    { "field": "counterparty", "op": "prefix", "value": "DGFIP", "category": "Taxes & fees" },
+    { "field": "merchant", "op": "prefix", "value": "MONOPRIX", "category": "Groceries" },
+    { "field": "merchant", "op": "prefix", "value": "PICARD", "category": "Groceries" },
+    { "field": "merchant", "op": "prefix", "value": "CARREFOUR", "category": "Groceries" },
+    { "field": "merchant", "op": "prefix", "value": "SUPER U", "category": "Groceries" },
+    { "field": "merchant", "op": "contains", "value": "AMZ", "category": "Shopping" },
+    { "field": "merchant", "op": "contains", "value": "AMAZON", "category": "Shopping" },
+    { "field": "merchant", "op": "prefix", "value": "STARBUCKS", "category": "Dining out" },
+    { "field": "merchant", "op": "prefix", "value": "SNCF", "category": "Transport" },
+    { "field": "merchant", "op": "prefix", "value": "UBER", "category": "Transport" },
+    { "field": "descriptor", "op": "contains", "value": "LOYER", "category": "Housing" },
+    { "field": "descriptor", "op": "contains", "value": "PHARMACIE", "category": "Health" },
+    { "field": "descriptor", "op": "contains", "value": "COMMISSIONS", "category": "Taxes & fees" }
+  ]
+}

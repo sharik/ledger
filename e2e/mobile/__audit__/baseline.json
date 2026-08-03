@@ -1,0 +1,533 @@
+{
+  "surfaces": 86,
+  "findings": 1196,
+  "defects": [
+    {
+      "id": "M-01",
+      "rule": "R5",
+      "severity": "P1",
+      "shape": "div > div > div > button",
+      "surfaces": [
+        "dash-year",
+        "overlay-assistant",
+        "overlay-chart-fullscreen",
+        "overlay-sync-notes",
+        "tab-dash",
+        "transient-explain"
+      ],
+      "count": 48
+    },
+    {
+      "id": "M-02",
+      "rule": "R5",
+      "severity": "P1",
+      "shape": "[data-testid=\"trip-card\"] > div > button",
+      "surfaces": [
+        "overlay-trip-mode",
+        "tab-trips"
+      ],
+      "count": 12
+    },
+    {
+      "id": "M-03",
+      "rule": "R5",
+      "severity": "P1",
+      "shape": "[data-pane=\"trends\"] > div > section > button",
+      "surfaces": [
+        "overlay-year-in-review",
+        "tab-trends",
+        "trends-all-months",
+        "trends-by-category"
+      ],
+      "count": 16
+    },
+    {
+      "id": "M-04",
+      "rule": "R5",
+      "severity": "P1",
+      "shape": "[data-testid=\"legend-cat-housing\"]",
+      "surfaces": [
+        "overlay-year-in-review",
+        "tab-trends",
+        "trends-all-months",
+        "trends-by-category"
+      ],
+      "count": 10
+    },
+    {
+      "id": "M-05",
+      "rule": "R5",
+      "severity": "P1",
+      "shape": "[data-testid=\"legend-cat-utilities\"]",
+      "surfaces": [
+        "overlay-year-in-review",
+        "tab-trends",
+        "trends-all-months",
+        "trends-by-category"
+      ],
+      "count": 10
+    },
+    {
+      "id": "M-06",
+      "rule": "R5",
+      "severity": "P1",
+      "shape": "[data-testid=\"legend-cat-groceries\"]",
+      "surfaces": [
+        "overlay-year-in-review",
+        "tab-trends",
+        "trends-all-months",
+        "trends-by-category"
+      ],
+      "count": 10
+    },
+    {
+      "id": "M-07",
+      "rule": "R5",
+      "severity": "P1",
+      "shape": "[data-testid=\"legend-cat-dining\"]",
+      "surfaces": [
+        "overlay-year-in-review",
+        "tab-trends",
+        "trends-all-months",
+        "trends-by-category"
+      ],
+      "count": 10
+    },
+    {
+      "id": "M-08",
+      "rule": "R5",
+      "severity": "P1",
+      "shape": "[data-testid=\"legend-cat-transport\"]",
+      "surfaces": [
+        "overlay-year-in-review",
+        "tab-trends",
+        "trends-all-months",
+        "trends-by-category"
+      ],
+      "count": 10
+    },
+    {
+      "id": "M-09",
+      "rule": "R5",
+      "severity": "P1",
+      "shape": "[data-testid=\"legend-cat-travel\"]",
+      "surfaces": [
+        "overlay-year-in-review",
+        "tab-trends",
+        "trends-all-months",
+        "trends-by-category"
+      ],
+      "count": 10
+    },
+    {
+      "id": "M-10",
+      "rule": "R5",
+      "severity": "P1",
+      "shape": "[data-testid=\"legend-cat-shopping\"]",
+      "surfaces": [
+        "overlay-year-in-review",
+        "tab-trends",
+        "trends-all-months",
+        "trends-by-category"
+      ],
+      "count": 10
+    },
+    {
+      "id": "M-11",
+      "rule": "R5",
+      "severity": "P1",
+      "shape": "[data-testid=\"legend-cat-entertainment\"]",
+      "surfaces": [
+        "overlay-year-in-review",
+        "tab-trends",
+        "trends-all-months",
+        "trends-by-category"
+      ],
+      "count": 10
+    },
+    {
+      "id": "M-12",
+      "rule": "R5",
+      "severity": "P1",
+      "shape": "[data-testid=\"legend-cat-other\"]",
+      "surfaces": [
+        "overlay-year-in-review",
+        "tab-trends",
+        "trends-all-months",
+        "trends-by-category"
+      ],
+      "count": 10
+    },
+    {
+      "id": "M-13",
+      "rule": "R5",
+      "severity": "P1",
+      "shape": "section > div > div > button",
+      "surfaces": [
+        "compare-full-period",
+        "compare-per-day",
+        "tab-compare"
+      ],
+      "count": 72
+    },
+    {
+      "id": "M-14",
+      "rule": "R5",
+      "severity": "P1",
+      "shape": "div > div > section > button",
+      "surfaces": [
+        "compare-full-period",
+        "compare-per-day",
+        "tab-compare"
+      ],
+      "count": 36
+    },
+    {
+      "id": "M-15",
+      "rule": "R5",
+      "severity": "P1",
+      "shape": "[data-testid=\"budget-offplan\"] > button",
+      "surfaces": [
+        "plan-prev-month",
+        "popover-budget-menu",
+        "tab-plan"
+      ],
+      "count": 24
+    },
+    {
+      "id": "M-16",
+      "rule": "R7",
+      "severity": "P1",
+      "shape": "[data-pane=\"settings\"] > div > div",
+      "surfaces": [
+        "popover-cat-swatch",
+        "tab-settings"
+      ],
+      "count": 4
+    },
+    {
+      "id": "M-17",
+      "rule": "R5",
+      "severity": "P2",
+      "shape": "[data-testid=\"metric-savings\"] > div > div",
+      "surfaces": [
+        "dash-year",
+        "empty-dash",
+        "overlay-assistant",
+        "overlay-chart-fullscreen",
+        "overlay-sync-notes",
+        "tab-dash",
+        "transient-explain"
+      ],
+      "count": 14
+    },
+    {
+      "id": "M-18",
+      "rule": "R5",
+      "severity": "P2",
+      "shape": "section > div > div > div",
+      "surfaces": [
+        "dash-year",
+        "overlay-assistant",
+        "overlay-chart-fullscreen",
+        "overlay-sync-notes",
+        "tab-dash",
+        "transient-explain"
+      ],
+      "count": 156
+    },
+    {
+      "id": "M-19",
+      "rule": "R5",
+      "severity": "P1",
+      "shape": "[data-testid=\"cat-menu-transfer\"]",
+      "surfaces": [
+        "popover-import-cat-menu"
+      ],
+      "count": 2
+    },
+    {
+      "id": "M-20",
+      "rule": "R9",
+      "severity": "P1",
+      "shape": "[data-testid=\"trip-chips\"] > div > div",
+      "surfaces": [
+        "popover-trip-picker"
+      ],
+      "count": 2
+    },
+    {
+      "id": "M-21",
+      "rule": "R5",
+      "severity": "P2",
+      "shape": "div > div > div > div",
+      "surfaces": [
+        "plan-prev-month",
+        "popover-budget-menu",
+        "tab-plan"
+      ],
+      "count": 74
+    },
+    {
+      "id": "M-22",
+      "rule": "R5",
+      "severity": "P2",
+      "shape": "[data-testid=\"budget-rollup\"] > div > div > div",
+      "surfaces": [
+        "plan-prev-month",
+        "popover-budget-menu",
+        "tab-plan"
+      ],
+      "count": 16
+    },
+    {
+      "id": "M-23",
+      "rule": "R1",
+      "severity": "P2",
+      "shape": "[data-testid=\"budget-offplan\"] > button > div > div",
+      "surfaces": [
+        "plan-prev-month"
+      ],
+      "count": 2
+    },
+    {
+      "id": "M-24",
+      "rule": "R2",
+      "severity": "P3",
+      "shape": "section > svg > g > rect",
+      "surfaces": [
+        "overlay-trip-mode",
+        "tab-trips"
+      ],
+      "count": 12
+    },
+    {
+      "id": "M-25",
+      "rule": "R6",
+      "severity": "P3",
+      "shape": "[data-testid=\"detect-trips\"]",
+      "surfaces": [
+        "overlay-trip-mode",
+        "tab-trips"
+      ],
+      "count": 4
+    },
+    {
+      "id": "M-26",
+      "rule": "R2",
+      "severity": "P3",
+      "shape": "div > svg > g > rect",
+      "surfaces": [
+        "overlay-year-in-review",
+        "tab-trends",
+        "trends-all-months",
+        "trends-by-category"
+      ],
+      "count": 544
+    },
+    {
+      "id": "M-27",
+      "rule": "R6",
+      "severity": "P3",
+      "shape": "[data-testid=\"unlock-go\"]",
+      "surfaces": [
+        "boot-setup",
+        "boot-unlock"
+      ],
+      "count": 4
+    },
+    {
+      "id": "M-28",
+      "rule": "R6",
+      "severity": "P3",
+      "shape": "[data-testid=\"fx-refresh\"]",
+      "surfaces": [
+        "popover-cat-swatch",
+        "tab-settings"
+      ],
+      "count": 4
+    },
+    {
+      "id": "M-29",
+      "rule": "R6",
+      "severity": "P3",
+      "shape": "[data-testid=\"assist-toggle\"]",
+      "surfaces": [
+        "popover-cat-swatch",
+        "tab-settings"
+      ],
+      "count": 4
+    },
+    {
+      "id": "M-30",
+      "rule": "R6",
+      "severity": "P3",
+      "shape": "[data-testid=\"param-srTarget-dec\"]",
+      "surfaces": [
+        "popover-cat-swatch",
+        "tab-settings"
+      ],
+      "count": 4
+    },
+    {
+      "id": "M-31",
+      "rule": "R6",
+      "severity": "P3",
+      "shape": "[data-testid=\"param-srTarget-inc\"]",
+      "surfaces": [
+        "popover-cat-swatch",
+        "tab-settings"
+      ],
+      "count": 4
+    },
+    {
+      "id": "M-32",
+      "rule": "R6",
+      "severity": "P3",
+      "shape": "[data-testid=\"param-efTarget-dec\"]",
+      "surfaces": [
+        "popover-cat-swatch",
+        "tab-settings"
+      ],
+      "count": 4
+    },
+    {
+      "id": "M-33",
+      "rule": "R6",
+      "severity": "P3",
+      "shape": "[data-testid=\"param-efTarget-inc\"]",
+      "surfaces": [
+        "popover-cat-swatch",
+        "tab-settings"
+      ],
+      "count": 4
+    },
+    {
+      "id": "M-34",
+      "rule": "R6",
+      "severity": "P3",
+      "shape": "[data-testid=\"export-csv\"]",
+      "surfaces": [
+        "popover-cat-swatch",
+        "tab-settings"
+      ],
+      "count": 4
+    },
+    {
+      "id": "M-35",
+      "rule": "R6",
+      "severity": "P3",
+      "shape": "[data-testid=\"export-json\"]",
+      "surfaces": [
+        "popover-cat-swatch",
+        "tab-settings"
+      ],
+      "count": 4
+    },
+    {
+      "id": "M-36",
+      "rule": "R6",
+      "severity": "P3",
+      "shape": "[data-testid=\"connect-create\"]",
+      "surfaces": [
+        "popover-cat-swatch",
+        "tab-settings"
+      ],
+      "count": 4
+    },
+    {
+      "id": "M-37",
+      "rule": "R6",
+      "severity": "P3",
+      "shape": "[data-testid=\"connect-open\"]",
+      "surfaces": [
+        "popover-cat-swatch",
+        "tab-settings"
+      ],
+      "count": 4
+    },
+    {
+      "id": "M-38",
+      "rule": "R6",
+      "severity": "P3",
+      "shape": "[data-testid=\"lock-now\"]",
+      "surfaces": [
+        "popover-cat-swatch",
+        "tab-settings"
+      ],
+      "count": 4
+    },
+    {
+      "id": "M-39",
+      "rule": "R6",
+      "severity": "P3",
+      "shape": "[data-testid=\"change-password\"]",
+      "surfaces": [
+        "popover-cat-swatch",
+        "tab-settings"
+      ],
+      "count": 4
+    },
+    {
+      "id": "M-40",
+      "rule": "R6",
+      "severity": "P3",
+      "shape": "[data-testid=\"load-demo\"]",
+      "surfaces": [
+        "popover-cat-swatch",
+        "tab-settings"
+      ],
+      "count": 4
+    },
+    {
+      "id": "M-41",
+      "rule": "R6",
+      "severity": "P3",
+      "shape": "[data-testid=\"dismiss-note\"]",
+      "surfaces": [
+        "overlay-sync-notes"
+      ],
+      "count": 4
+    },
+    {
+      "id": "M-42",
+      "rule": "R6",
+      "severity": "P3",
+      "shape": "[data-testid=\"switch-open\"]",
+      "surfaces": [
+        "boot-unlock"
+      ],
+      "count": 2
+    },
+    {
+      "id": "M-43",
+      "rule": "R6",
+      "severity": "P3",
+      "shape": "[data-testid=\"assistant-close\"]",
+      "surfaces": [
+        "overlay-assistant"
+      ],
+      "count": 2
+    },
+    {
+      "id": "M-44",
+      "rule": "R6",
+      "severity": "P3",
+      "shape": "[data-testid=\"close-notes\"]",
+      "surfaces": [
+        "overlay-sync-notes"
+      ],
+      "count": 2
+    },
+    {
+      "id": "M-45",
+      "rule": "R6",
+      "severity": "P3",
+      "shape": "[data-testid=\"use-other\"]",
+      "surfaces": [
+        "overlay-sync-notes"
+      ],
+      "count": 2
+    }
+  ]
+}

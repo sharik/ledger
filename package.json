@@ -1,0 +1,48 @@
+{
+  "name": "ledger",
+  "private": true,
+  "version": "0.1.0",
+  "license": "AGPL-3.0-only",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc --noEmit && vite build",
+    "preview": "vite preview",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:e2e": "playwright test --project=desktop --project=mobile --project=mobile-sm",
+    "test:live": "playwright test --project=live",
+    "test:all": "tsc --noEmit && vitest run && npm run test:e2e",
+    "test:mobile": "playwright test --project=mobile --project=mobile-sm",
+    "mobile:audit": "vitest run tests/mobile-static.test.ts && playwright test --project=mobile --project=mobile-sm e2e/mobile/audit.spec.ts",
+    "mobile:report": "tsx scripts/mobile-audit-report.ts",
+    "fixtures:goldens": "tsx scripts/update-goldens.ts",
+    "fixtures:make": "tsx scripts/make-fixtures.ts"
+  },
+  "dependencies": {
+    "@dnd-kit/core": "^6.3.1",
+    "hash-wasm": "^4.12.0",
+    "pdfjs-dist": "^6.1.200",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "uuid": "^11.1.0",
+    "xlsx": "^0.18.5"
+  },
+  "devDependencies": {
+    "@fontsource/ibm-plex-mono": "^5.3.0",
+    "@fontsource/ibm-plex-sans": "^5.3.0",
+    "@pdf-lib/fontkit": "^1.1.1",
+    "@playwright/test": "1.61.1",
+    "@types/node": "^26.1.1",
+    "@types/react": "^18.3.12",
+    "@types/react-dom": "^18.3.1",
+    "@vitejs/plugin-react": "^4.5.0",
+    "fake-indexeddb": "^6.0.0",
+    "pdf-lib": "^1.17.1",
+    "tsx": "^4.23.1",
+    "typescript": "^5.8.0",
+    "vite": "^6.3.5",
+    "vitest": "^3.2.0"
+  }
+}

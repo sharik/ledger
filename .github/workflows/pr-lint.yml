@@ -1,0 +1,49 @@
+name: PR title
+
+on:
+  pull_request_target:
+    types: [opened, edited, synchronize, reopened]
+
+permissions:
+  pull-requests: read
+
+jobs:
+  conventional-commit:
+    name: conventional commit
+    runs-on: ubuntu-latest
+    steps:
+      # PRs are squash-merged, so the PR TITLE becomes the commit message on main — which is what
+      # release-please reads to decide the next version. Linting the title is therefore linting
+      # the release notes, and it is far less friction for contributors than a hook on every
+      # local commit.
+      - uses: amannn/action-semantic-pull-request@v5
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          types: |
+            feat
+            fix
+            docs
+            style
+            refactor
+            perf
+            test
+            build
+            ci
+            chore
+            revert
+          scopes: |
+            import
+            sync
+            analytics
+            assistant
+            ui
+            persist
+            model
+            e2e
+            deps
+          requireScope: false
+          subjectPattern: ^(?![A-Z])(?!.*\.$).+$
+          subjectPatternError: |
+            The subject "{subject}" is not formatted correctly: start it lowercase and leave off
+            the trailing period, e.g. `fix(sync): keep the grant when a refresh 5xxs`.

@@ -1,0 +1,462 @@
+[
+  {
+    "rule": "R6",
+    "surface": "boot-setup",
+    "selector": "[data-testid=\"unlock-go\"]"
+  },
+  {
+    "rule": "R6",
+    "surface": "boot-unlock",
+    "selector": "[data-testid=\"switch-open\"]"
+  },
+  {
+    "rule": "R6",
+    "surface": "boot-unlock",
+    "selector": "[data-testid=\"unlock-go\"]"
+  },
+  {
+    "rule": "R5",
+    "surface": "compare-full-period",
+    "selector": "div:nth-of-type(n) > div:nth-of-type(n) > section:nth-of-type(n) > button:nth-of-type(n)"
+  },
+  {
+    "rule": "R5",
+    "surface": "compare-full-period",
+    "selector": "section:nth-of-type(n) > div:nth-of-type(n) > div:nth-of-type(n) > button:nth-of-type(n)"
+  },
+  {
+    "rule": "R5",
+    "surface": "compare-per-day",
+    "selector": "div:nth-of-type(n) > div:nth-of-type(n) > section:nth-of-type(n) > button:nth-of-type(n)"
+  },
+  {
+    "rule": "R5",
+    "surface": "compare-per-day",
+    "selector": "section:nth-of-type(n) > div:nth-of-type(n) > div:nth-of-type(n) > button:nth-of-type(n)"
+  },
+  {
+    "rule": "R5",
+    "surface": "dash-year",
+    "selector": "[data-testid=\"metric-savings\"] > div:nth-of-type(n) > div:nth-of-type(n)"
+  },
+  {
+    "rule": "R5",
+    "surface": "dash-year",
+    "selector": "div:nth-of-type(n) > div > div:nth-of-type(n) > button:nth-of-type(n)"
+  },
+  {
+    "rule": "R5",
+    "surface": "dash-year",
+    "selector": "section > div:nth-of-type(n) > div:nth-of-type(n) > div:nth-of-type(n)"
+  },
+  {
+    "rule": "R5",
+    "surface": "empty-dash",
+    "selector": "[data-testid=\"metric-savings\"] > div:nth-of-type(n) > div:nth-of-type(n)"
+  },
+  {
+    "rule": "R5",
+    "surface": "overlay-assistant",
+    "selector": "[data-testid=\"metric-savings\"] > div:nth-of-type(n) > div:nth-of-type(n)"
+  },
+  {
+    "rule": "R5",
+    "surface": "overlay-assistant",
+    "selector": "div:nth-of-type(n) > div > div:nth-of-type(n) > button:nth-of-type(n)"
+  },
+  {
+    "rule": "R5",
+    "surface": "overlay-assistant",
+    "selector": "section > div:nth-of-type(n) > div:nth-of-type(n) > div:nth-of-type(n)"
+  },
+  {
+    "rule": "R6",
+    "surface": "overlay-assistant",
+    "selector": "[data-testid=\"assistant-close\"]"
+  },
+  {
+    "rule": "R5",
+    "surface": "overlay-chart-fullscreen",
+    "selector": "[data-testid=\"metric-savings\"] > div:nth-of-type(n) > div:nth-of-type(n)"
+  },
+  {
+    "rule": "R5",
+    "surface": "overlay-chart-fullscreen",
+    "selector": "div:nth-of-type(n) > div > div:nth-of-type(n) > button:nth-of-type(n)"
+  },
+  {
+    "rule": "R5",
+    "surface": "overlay-chart-fullscreen",
+    "selector": "section > div:nth-of-type(n) > div:nth-of-type(n) > div:nth-of-type(n)"
+  },
+  {
+    "rule": "R5",
+    "surface": "overlay-sync-notes",
+    "selector": "[data-testid=\"metric-savings\"] > div:nth-of-type(n) > div:nth-of-type(n)"
+  },
+  {
+    "rule": "R5",
+    "surface": "overlay-sync-notes",
+    "selector": "div:nth-of-type(n) > div > div:nth-of-type(n) > button:nth-of-type(n)"
+  },
+  {
+    "rule": "R5",
+    "surface": "overlay-sync-notes",
+    "selector": "section > div:nth-of-type(n) > div:nth-of-type(n) > div:nth-of-type(n)"
+  },
+  {
+    "rule": "R6",
+    "surface": "overlay-sync-notes",
+    "selector": "[data-testid=\"close-notes\"]"
+  },
+  {
+    "rule": "R6",
+    "surface": "overlay-sync-notes",
+    "selector": "[data-testid=\"dismiss-note\"]"
+  },
+  {
+    "rule": "R6",
+    "surface": "overlay-sync-notes",
+    "selector": "[data-testid=\"use-other\"]"
+  },
+  {
+    "rule": "R2",
+    "surface": "overlay-year-in-review",
+    "selector": "div > svg > g:nth-of-type(n) > rect"
+  },
+  {
+    "rule": "R2",
+    "surface": "overlay-year-in-review",
+    "selector": "div > svg > g:nth-of-type(n) > rect:nth-of-type(n)"
+  },
+  {
+    "rule": "R5",
+    "surface": "overlay-year-in-review",
+    "selector": "[data-pane=\"trends\"] > div > section > button:nth-of-type(n)"
+  },
+  {
+    "rule": "R1",
+    "surface": "plan-prev-month",
+    "selector": "[data-testid=\"budget-offplan\"] > button:nth-of-type(n) > div:nth-of-type(n) > div:nth-of-type(n)"
+  },
+  {
+    "rule": "R5",
+    "surface": "plan-prev-month",
+    "selector": "[data-testid=\"budget-offplan\"] > button:nth-of-type(n)"
+  },
+  {
+    "rule": "R5",
+    "surface": "plan-prev-month",
+    "selector": "[data-testid=\"budget-rollup\"] > div:nth-of-type(n) > div:nth-of-type(n) > div:nth-of-type(n)"
+  },
+  {
+    "rule": "R5",
+    "surface": "plan-prev-month",
+    "selector": "div:nth-of-type(n) > div > div:nth-of-type(n) > div:nth-of-type(n)"
+  },
+  {
+    "rule": "R5",
+    "surface": "plan-prev-month",
+    "selector": "div:nth-of-type(n) > div:nth-of-type(n) > div:nth-of-type(n) > div:nth-of-type(n)"
+  },
+  {
+    "rule": "R5",
+    "surface": "popover-budget-menu",
+    "selector": "[data-testid=\"budget-offplan\"] > button:nth-of-type(n)"
+  },
+  {
+    "rule": "R5",
+    "surface": "popover-budget-menu",
+    "selector": "[data-testid=\"budget-rollup\"] > div:nth-of-type(n) > div:nth-of-type(n) > div:nth-of-type(n)"
+  },
+  {
+    "rule": "R5",
+    "surface": "popover-budget-menu",
+    "selector": "div:nth-of-type(n) > div > div:nth-of-type(n) > div:nth-of-type(n)"
+  },
+  {
+    "rule": "R5",
+    "surface": "popover-budget-menu",
+    "selector": "div:nth-of-type(n) > div:nth-of-type(n) > div:nth-of-type(n) > div:nth-of-type(n)"
+  },
+  {
+    "rule": "R6",
+    "surface": "popover-cat-swatch",
+    "selector": "[data-testid=\"assist-toggle\"]"
+  },
+  {
+    "rule": "R6",
+    "surface": "popover-cat-swatch",
+    "selector": "[data-testid=\"change-password\"]"
+  },
+  {
+    "rule": "R6",
+    "surface": "popover-cat-swatch",
+    "selector": "[data-testid=\"connect-create\"]"
+  },
+  {
+    "rule": "R6",
+    "surface": "popover-cat-swatch",
+    "selector": "[data-testid=\"connect-open\"]"
+  },
+  {
+    "rule": "R6",
+    "surface": "popover-cat-swatch",
+    "selector": "[data-testid=\"export-csv\"]"
+  },
+  {
+    "rule": "R6",
+    "surface": "popover-cat-swatch",
+    "selector": "[data-testid=\"export-json\"]"
+  },
+  {
+    "rule": "R6",
+    "surface": "popover-cat-swatch",
+    "selector": "[data-testid=\"fx-refresh\"]"
+  },
+  {
+    "rule": "R6",
+    "surface": "popover-cat-swatch",
+    "selector": "[data-testid=\"load-demo\"]"
+  },
+  {
+    "rule": "R6",
+    "surface": "popover-cat-swatch",
+    "selector": "[data-testid=\"lock-now\"]"
+  },
+  {
+    "rule": "R6",
+    "surface": "popover-cat-swatch",
+    "selector": "[data-testid=\"param-efTarget-dec\"]"
+  },
+  {
+    "rule": "R6",
+    "surface": "popover-cat-swatch",
+    "selector": "[data-testid=\"param-efTarget-inc\"]"
+  },
+  {
+    "rule": "R6",
+    "surface": "popover-cat-swatch",
+    "selector": "[data-testid=\"param-srTarget-dec\"]"
+  },
+  {
+    "rule": "R6",
+    "surface": "popover-cat-swatch",
+    "selector": "[data-testid=\"param-srTarget-inc\"]"
+  },
+  {
+    "rule": "R7",
+    "surface": "popover-cat-swatch",
+    "selector": "[data-pane=\"settings\"] > div > div:nth-of-type(n)"
+  },
+  {
+    "rule": "R5",
+    "surface": "popover-import-cat-menu",
+    "selector": "[data-testid=\"cat-menu-transfer\"]"
+  },
+  {
+    "rule": "R9",
+    "surface": "popover-trip-picker",
+    "selector": "[data-testid=\"trip-chips\"] > div > div:nth-of-type(n)"
+  },
+  {
+    "rule": "R2",
+    "surface": "screen-trip-detail",
+    "selector": "div > svg > g:nth-of-type(n) > rect"
+  },
+  {
+    "rule": "R2",
+    "surface": "screen-trip-detail",
+    "selector": "div > svg > g:nth-of-type(n) > rect:nth-of-type(n)"
+  },
+  {
+    "rule": "R5",
+    "surface": "tab-compare",
+    "selector": "div:nth-of-type(n) > div:nth-of-type(n) > section:nth-of-type(n) > button:nth-of-type(n)"
+  },
+  {
+    "rule": "R5",
+    "surface": "tab-compare",
+    "selector": "section:nth-of-type(n) > div:nth-of-type(n) > div:nth-of-type(n) > button:nth-of-type(n)"
+  },
+  {
+    "rule": "R5",
+    "surface": "tab-dash",
+    "selector": "[data-testid=\"metric-savings\"] > div:nth-of-type(n) > div:nth-of-type(n)"
+  },
+  {
+    "rule": "R5",
+    "surface": "tab-dash",
+    "selector": "div:nth-of-type(n) > div > div:nth-of-type(n) > button:nth-of-type(n)"
+  },
+  {
+    "rule": "R5",
+    "surface": "tab-dash",
+    "selector": "section > div:nth-of-type(n) > div:nth-of-type(n) > div:nth-of-type(n)"
+  },
+  {
+    "rule": "R5",
+    "surface": "tab-plan",
+    "selector": "[data-testid=\"budget-offplan\"] > button:nth-of-type(n)"
+  },
+  {
+    "rule": "R5",
+    "surface": "tab-plan",
+    "selector": "[data-testid=\"budget-rollup\"] > div:nth-of-type(n) > div:nth-of-type(n) > div:nth-of-type(n)"
+  },
+  {
+    "rule": "R5",
+    "surface": "tab-plan",
+    "selector": "div:nth-of-type(n) > div > div:nth-of-type(n) > div:nth-of-type(n)"
+  },
+  {
+    "rule": "R5",
+    "surface": "tab-plan",
+    "selector": "div:nth-of-type(n) > div:nth-of-type(n) > div:nth-of-type(n) > div:nth-of-type(n)"
+  },
+  {
+    "rule": "R6",
+    "surface": "tab-settings",
+    "selector": "[data-testid=\"assist-toggle\"]"
+  },
+  {
+    "rule": "R6",
+    "surface": "tab-settings",
+    "selector": "[data-testid=\"change-password\"]"
+  },
+  {
+    "rule": "R6",
+    "surface": "tab-settings",
+    "selector": "[data-testid=\"connect-create\"]"
+  },
+  {
+    "rule": "R6",
+    "surface": "tab-settings",
+    "selector": "[data-testid=\"connect-open\"]"
+  },
+  {
+    "rule": "R6",
+    "surface": "tab-settings",
+    "selector": "[data-testid=\"export-csv\"]"
+  },
+  {
+    "rule": "R6",
+    "surface": "tab-settings",
+    "selector": "[data-testid=\"export-json\"]"
+  },
+  {
+    "rule": "R6",
+    "surface": "tab-settings",
+    "selector": "[data-testid=\"fx-refresh\"]"
+  },
+  {
+    "rule": "R6",
+    "surface": "tab-settings",
+    "selector": "[data-testid=\"load-demo\"]"
+  },
+  {
+    "rule": "R6",
+    "surface": "tab-settings",
+    "selector": "[data-testid=\"lock-now\"]"
+  },
+  {
+    "rule": "R6",
+    "surface": "tab-settings",
+    "selector": "[data-testid=\"param-efTarget-dec\"]"
+  },
+  {
+    "rule": "R6",
+    "surface": "tab-settings",
+    "selector": "[data-testid=\"param-efTarget-inc\"]"
+  },
+  {
+    "rule": "R6",
+    "surface": "tab-settings",
+    "selector": "[data-testid=\"param-srTarget-dec\"]"
+  },
+  {
+    "rule": "R6",
+    "surface": "tab-settings",
+    "selector": "[data-testid=\"param-srTarget-inc\"]"
+  },
+  {
+    "rule": "R7",
+    "surface": "tab-settings",
+    "selector": "[data-pane=\"settings\"] > div > div:nth-of-type(n)"
+  },
+  {
+    "rule": "R2",
+    "surface": "tab-trends",
+    "selector": "div > svg > g:nth-of-type(n) > rect"
+  },
+  {
+    "rule": "R2",
+    "surface": "tab-trends",
+    "selector": "div > svg > g:nth-of-type(n) > rect:nth-of-type(n)"
+  },
+  {
+    "rule": "R5",
+    "surface": "tab-trends",
+    "selector": "[data-pane=\"trends\"] > div > section > button:nth-of-type(n)"
+  },
+  {
+    "rule": "R2",
+    "surface": "tab-trips",
+    "selector": "div:nth-of-type(2) > svg > g:nth-of-type(n) > rect"
+  },
+  {
+    "rule": "R2",
+    "surface": "tab-trips",
+    "selector": "section:nth-of-type(n) > svg > g:nth-of-type(n) > rect"
+  },
+  {
+    "rule": "R5",
+    "surface": "tab-trips",
+    "selector": "[data-testid=\"trip-card\"] > div:nth-of-type(n) > button"
+  },
+  {
+    "rule": "R6",
+    "surface": "tab-trips",
+    "selector": "[data-testid=\"detect-trips\"]"
+  },
+  {
+    "rule": "R5",
+    "surface": "transient-explain",
+    "selector": "[data-testid=\"metric-savings\"] > div:nth-of-type(n) > div:nth-of-type(n)"
+  },
+  {
+    "rule": "R5",
+    "surface": "transient-explain",
+    "selector": "div:nth-of-type(n) > div > div:nth-of-type(n) > button:nth-of-type(n)"
+  },
+  {
+    "rule": "R5",
+    "surface": "transient-explain",
+    "selector": "section > div:nth-of-type(n) > div:nth-of-type(n) > div:nth-of-type(n)"
+  },
+  {
+    "rule": "R2",
+    "surface": "trends-all-months",
+    "selector": "div > svg > g:nth-of-type(n) > rect"
+  },
+  {
+    "rule": "R2",
+    "surface": "trends-all-months",
+    "selector": "div > svg > g:nth-of-type(n) > rect:nth-of-type(n)"
+  },
+  {
+    "rule": "R5",
+    "surface": "trends-all-months",
+    "selector": "[data-pane=\"trends\"] > div > section > button:nth-of-type(n)"
+  },
+  {
+    "rule": "R2",
+    "surface": "trends-by-category",
+    "selector": "div > svg > g:nth-of-type(n) > rect:nth-of-type(n)"
+  },
+  {
+    "rule": "R5",
+    "surface": "trends-by-category",
+    "selector": "[data-pane=\"trends\"] > div > section > button:nth-of-type(n)"
+  }
+]

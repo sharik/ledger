@@ -1,0 +1,82 @@
+name: Release
+
+on:
+  push:
+    branches: [main]
+  # Lets a first deploy be triggered by hand, before any release exists.
+  workflow_dispatch:
+
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  # Nothing is published unless the same checks that gate a PR pass on main.
+  verify:
+    uses: ./.github/workflows/ci.yml
+
+  release:
+    needs: verify
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+    outputs:
+      released: ${{ steps.release.outputs.release_created }}
+      tag: ${{ steps.release.outputs.tag_name }}
+    steps:
+      # Reads Conventional Commits and keeps a release PR open with the next version and the
+      # changelog. Merging that PR is what cuts a release — so releasing stays a deliberate act,
+      # not a side effect of merging a feature.
+      - uses: googleapis/release-please-action@v4
+        id: release
+        with:
+          release-type: node
+
+  deploy:
+    needs: release
+    if: needs.release.outputs.released == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.pages.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      - run: npm ci
+
+      - name: Build
+        run: npm run build
+        env:
+          # An OAuth client for a browser app cannot keep a secret — both values ship in the
+          # bundle by design, and what limits them is the redirect-URI allowlist in the Google
+          # console. They live in repository secrets so they are not in source, and so a fork
+          # builds without Drive rather than against this project's client.
+          VITE_GOOGLE_CLIENT_ID: ${{ secrets.VITE_GOOGLE_CLIENT_ID }}
+          VITE_GOOGLE_CLIENT_SECRET: ${{ secrets.VITE_GOOGLE_CLIENT_SECRET }}
+
+      - name: Attach the build to the release
+        run: |
+          tar -czf "ledger-${{ needs.release.outputs.tag }}.tar.gz" -C dist .
+          gh release upload "${{ needs.release.outputs.tag }}" "ledger-${{ needs.release.outputs.tag }}.tar.gz" --clobber
+        env:
+          GH_TOKEN: ${{ github.token }}
+
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: dist
+      - uses: actions/deploy-pages@v4
+        id: pages

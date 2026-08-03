@@ -1,0 +1,300 @@
+[
+  {
+    "bookedDate": "2025-06-02",
+    "amountMinor": -145849,
+    "currency": "UAH",
+    "original": {
+      "amount": -30.64,
+      "currency": "EUR"
+    },
+    "merchant": "LIWI",
+    "normDesc": "LIWI",
+    "kind": "expense",
+    "bankCategory": "Travel",
+    "balanceAfterMinor": 379562,
+    "sourceLine": 0,
+    "raw": "LIWI"
+  },
+  {
+    "bookedDate": "2025-06-03",
+    "amountMinor": 71639,
+    "currency": "UAH",
+    "original": {
+      "amount": 15.05,
+      "currency": "EUR"
+    },
+    "merchant": "LIWI",
+    "normDesc": "CANCEL LIWI",
+    "kind": "refund",
+    "bankCategory": "Travel",
+    "balanceAfterMinor": 451201,
+    "sourceLine": 1,
+    "raw": "Cancel LIWI"
+  },
+  {
+    "bookedDate": "2025-06-04",
+    "amountMinor": 74210,
+    "currency": "UAH",
+    "original": {
+      "amount": 15.59,
+      "currency": "EUR"
+    },
+    "merchant": "LIWI",
+    "normDesc": "CANCEL LIWI",
+    "kind": "refund",
+    "bankCategory": "Travel",
+    "balanceAfterMinor": 525411,
+    "sourceLine": 2,
+    "raw": "Cancel LIWI"
+  },
+  {
+    "bookedDate": "2025-06-04",
+    "amountMinor": -74444,
+    "currency": "UAH",
+    "original": {
+      "amount": -15.59,
+      "currency": "EUR"
+    },
+    "merchant": "LIWI",
+    "normDesc": "LIWI,ALSACE,FR",
+    "kind": "expense",
+    "bankCategory": "Travel",
+    "balanceAfterMinor": 450967,
+    "sourceLine": 3,
+    "raw": "LIWI,Alsace,FR"
+  },
+  {
+    "bookedDate": "2025-06-05",
+    "amountMinor": -286315,
+    "currency": "UAH",
+    "original": {
+      "amount": -59.9,
+      "currency": "EUR"
+    },
+    "merchant": "ZIDEWA",
+    "normDesc": "ZIDEWA",
+    "kind": "expense",
+    "bankCategory": "Dining out",
+    "balanceAfterMinor": 164652,
+    "sourceLine": 4,
+    "raw": "ZIDEWA"
+  },
+  {
+    "bookedDate": "2025-06-15",
+    "amountMinor": 2375000,
+    "currency": "UAH",
+    "merchant": "Pani GEV kafoput",
+    "normDesc": "PANI GEV KAFOPUT",
+    "counterparty": "Pani GEV kafoput",
+    "kind": "transfer-in",
+    "balanceAfterMinor": 2539652,
+    "sourceLine": 5,
+    "raw": "Pani GEV kafoput"
+  },
+  {
+    "bookedDate": "2025-06-18",
+    "amountMinor": -703518,
+    "currency": "UAH",
+    "merchant": "6420 7****7376",
+    "normDesc": "6420 7****7376",
+    "counterparty": "6420 7****7376",
+    "kind": "transfer-out",
+    "balanceAfterMinor": 1836134,
+    "sourceLine": 6,
+    "raw": "6420 7****7376"
+  },
+  {
+    "bookedDate": "2025-06-18",
+    "amountMinor": -1226100,
+    "currency": "UAH",
+    "feeMinor": 6100,
+    "merchant": "КОЗ Шюжакяси Кишофаку Хіжюлахе",
+    "normDesc": "КОЗ ШЮЖАКЯСИ КИШОФАКУ ХІЖЮЛАХЕ",
+    "counterparty": "КОЗ Шюжакяси Кишофаку Хіжюлахе",
+    "kind": "transfer-out",
+    "balanceAfterMinor": 610034,
+    "sourceLine": 7,
+    "raw": "КОЗ Шюжакяси Кишофаку Хіжюлахе"
+  },
+  {
+    "bookedDate": "2025-07-14",
+    "amountMinor": -528000,
+    "currency": "UAH",
+    "merchant": "КЯ ЛУД д Кюфинякечюш гугимур/03216321",
+    "normDesc": "КЯ ЛУД Д КЮФИНЯКЕЧЮШ ГУГИМУР/03216321",
+    "counterparty": "КЯ ЛУД д Кюфинякечюш гугимур/03216321",
+    "kind": "transfer-out",
+    "balanceAfterMinor": 82034,
+    "sourceLine": 8,
+    "raw": "КЯ ЛУД д Кюфинякечюш гугимур/03216321"
+  },
+  {
+    "bookedDate": "2025-07-14",
+    "amountMinor": 2427500,
+    "currency": "UAH",
+    "merchant": "Pani GEV kafoput",
+    "normDesc": "PANI GEV KAFOPUT",
+    "counterparty": "Pani GEV kafoput",
+    "kind": "transfer-in",
+    "balanceAfterMinor": 2509534,
+    "sourceLine": 9,
+    "raw": "Pani GEV kafoput"
+  },
+  {
+    "bookedDate": "2025-07-18",
+    "amountMinor": -703518,
+    "currency": "UAH",
+    "merchant": "6420 7****7376",
+    "normDesc": "6420 7****7376",
+    "counterparty": "6420 7****7376",
+    "kind": "transfer-out",
+    "balanceAfterMinor": 1806016,
+    "sourceLine": 10,
+    "raw": "6420 7****7376"
+  },
+  {
+    "bookedDate": "2025-08-05",
+    "amountMinor": -100000,
+    "currency": "UAH",
+    "merchant": "Xehibezeligex «Фочі вамілюцосу🥳🥳»",
+    "normDesc": "XEHIBEZELIGEX «ФОЧІ ВАМІЛЮЦОСУ🥳🥳»",
+    "counterparty": "Xehibezeligex «Фочі вамілюцосу🥳🥳»",
+    "kind": "transfer-out",
+    "balanceAfterMinor": 1706016,
+    "sourceLine": 11,
+    "raw": "Xehibezeligex «Фочі вамілюцосу🥳🥳»"
+  },
+  {
+    "bookedDate": "2025-08-12",
+    "amountMinor": 2392500,
+    "currency": "UAH",
+    "merchant": "Pani GEV kafoput",
+    "normDesc": "PANI GEV KAFOPUT",
+    "counterparty": "Pani GEV kafoput",
+    "kind": "transfer-in",
+    "balanceAfterMinor": 4098516,
+    "sourceLine": 12,
+    "raw": "Pani GEV kafoput"
+  },
+  {
+    "bookedDate": "2025-08-12",
+    "amountMinor": -1226100,
+    "currency": "UAH",
+    "feeMinor": 6100,
+    "merchant": "КОЗ Лацоци Цизоф Зютобюпич",
+    "normDesc": "КОЗ ЛАЦОЦИ ЦИЗОФ ЗЮТОБЮПИЧ",
+    "counterparty": "КОЗ Лацоци Цизоф Зютобюпич",
+    "kind": "transfer-out",
+    "balanceAfterMinor": 2872416,
+    "sourceLine": 13,
+    "raw": "КОЗ Лацоци Цизоф Зютобюпич"
+  },
+  {
+    "bookedDate": "2025-08-15",
+    "amountMinor": -2000,
+    "currency": "UAH",
+    "merchant": "Safizoda +357844289937",
+    "normDesc": "SAFIZODA +357844289937",
+    "kind": "expense",
+    "bankCategory": "Utilities",
+    "balanceAfterMinor": 2870416,
+    "sourceLine": 14,
+    "raw": "Safizoda +357844289937"
+  },
+  {
+    "bookedDate": "2025-08-18",
+    "amountMinor": -703518,
+    "currency": "UAH",
+    "merchant": "6420 7****7376",
+    "normDesc": "6420 7****7376",
+    "counterparty": "6420 7****7376",
+    "kind": "transfer-out",
+    "balanceAfterMinor": 2166898,
+    "sourceLine": 15,
+    "raw": "6420 7****7376"
+  },
+  {
+    "bookedDate": "2025-08-21",
+    "amountMinor": -150000,
+    "currency": "UAH",
+    "merchant": "Xehibezeligex «Ра TOF-вачаб»",
+    "normDesc": "XEHIBEZELIGEX «РА TOF-ВАЧАБ»",
+    "counterparty": "Xehibezeligex «Ра TOF-вачаб»",
+    "kind": "transfer-out",
+    "balanceAfterMinor": 2016898,
+    "sourceLine": 16,
+    "raw": "Xehibezeligex «Ра TOF-вачаб»"
+  },
+  {
+    "bookedDate": "2025-09-05",
+    "amountMinor": -441602,
+    "currency": "UAH",
+    "merchant": "he rez wi livuha kafejof",
+    "normDesc": "HE REZ WI LIVUHA KAFEJOF",
+    "kind": "expense",
+    "bankCategory": "Transport",
+    "balanceAfterMinor": 1575296,
+    "sourceLine": 17,
+    "raw": "he rez wi livuha kafejof"
+  },
+  {
+    "bookedDate": "2025-09-05",
+    "amountMinor": -441602,
+    "currency": "UAH",
+    "merchant": "he rez wi livuha kafejof",
+    "normDesc": "HE REZ WI LIVUHA KAFEJOF",
+    "kind": "expense",
+    "bankCategory": "Transport",
+    "balanceAfterMinor": 1133694,
+    "sourceLine": 18,
+    "raw": "he rez wi livuha kafejof"
+  },
+  {
+    "bookedDate": "2025-09-05",
+    "amountMinor": 441602,
+    "currency": "UAH",
+    "merchant": "he rez wi livuha kafejof",
+    "normDesc": "CANCEL HE REZ WI LIVUHA KAFEJOF",
+    "kind": "refund",
+    "bankCategory": "Transport",
+    "balanceAfterMinor": 1575296,
+    "sourceLine": 19,
+    "raw": "Cancel he rez wi livuha kafejof"
+  },
+  {
+    "bookedDate": "2025-09-05",
+    "amountMinor": 441602,
+    "currency": "UAH",
+    "merchant": "he rez wi livuha kafejof",
+    "normDesc": "CANCEL HE REZ WI LIVUHA KAFEJOF",
+    "kind": "refund",
+    "bankCategory": "Transport",
+    "balanceAfterMinor": 2016898,
+    "sourceLine": 20,
+    "raw": "Cancel he rez wi livuha kafejof"
+  },
+  {
+    "bookedDate": "2025-09-18",
+    "amountMinor": -703518,
+    "currency": "UAH",
+    "merchant": "6420 7****7376",
+    "normDesc": "6420 7****7376",
+    "counterparty": "6420 7****7376",
+    "kind": "transfer-out",
+    "balanceAfterMinor": 1313380,
+    "sourceLine": 21,
+    "raw": "6420 7****7376"
+  },
+  {
+    "bookedDate": "2025-09-23",
+    "amountMinor": -300000,
+    "currency": "UAH",
+    "merchant": "Мовіш П.",
+    "normDesc": "МОВІШ П.",
+    "counterparty": "Мовіш П.",
+    "kind": "transfer-out",
+    "balanceAfterMinor": 1013380,
+    "sourceLine": 22,
+    "raw": "Мовіш П."
+  }
+]
