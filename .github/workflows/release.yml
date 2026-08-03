@@ -31,10 +31,12 @@ jobs:
       # Reads Conventional Commits and keeps a release PR open with the next version and the
       # changelog. Merging that PR is what cuts a release — so releasing stays a deliberate act,
       # not a side effect of merging a feature.
+      # Manifest mode: version and configuration come from `.release-please-manifest.json` and
+      # `release-please-config.json`, not from a `release-type` input here. Passing `release-type`
+      # switches the action to standalone mode, where it ignores both files and starts a first
+      # release at 1.0.0 — which is not what a pre-1.0 project wants.
       - uses: googleapis/release-please-action@v4
         id: release
-        with:
-          release-type: node
 
   deploy:
     needs: release
