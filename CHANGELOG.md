@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.1](https://github.com/sharik/ledger/compare/ledger-v0.1.0...ledger-v0.1.1) (2026-08-03)
+
+
+### Bug fixes
+
+* **deps:** take SheetJS 0.20.3 from its own CDN to clear two advisories ([#7](https://github.com/sharik/ledger/issues/7)) ([e993db9](https://github.com/sharik/ledger/commit/e993db96da2ceb854e4a4e884485384d26747f03))
+
 ## 0.1.0 (2026-08-03)
 
 
