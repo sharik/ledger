@@ -49,7 +49,8 @@ describe('skillNameExists — an import must not shadow a trusted skill (§6)', 
 
 describe('the built-ins ship parsed (§6)', () => {
   it('every built-in has a unique name, a description and a body', () => {
-    expect(BUILTIN_SKILLS.length).toBeGreaterThanOrEqual(4)
+    expect(BUILTIN_SKILLS.length).toBeGreaterThanOrEqual(5)
+    expect(BUILTIN_SKILLS.map((s) => s.name)).toContain('budgeting')
     expect(new Set(BUILTIN_SKILLS.map((s) => s.name)).size).toBe(BUILTIN_SKILLS.length)
     for (const s of BUILTIN_SKILLS) {
       expect(s.builtin).toBe(true)

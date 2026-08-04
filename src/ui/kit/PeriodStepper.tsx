@@ -69,7 +69,21 @@ export function periodLabelOf(v: PeriodValue, thisMonth: MonthKey = currentMonth
 }
 
 const stepBtn: React.CSSProperties = { fontFamily: MONO, fontSize: 14, color: FAINT, background: 'none', border: 'none', cursor: 'pointer', padding: '0 3px', lineHeight: 1 }
-const todayBtn: React.CSSProperties = { fontSize: 12, color: ACCENT, fontWeight: 500, background: 'none', border: 'none', cursor: 'pointer' }
+// A chip, not a bare text link: it sits inside the stepper cluster, and styled like the screen's
+// other action links it read as one more unrelated verb in the header instead of "go back".
+const todayBtn: React.CSSProperties = {
+  fontFamily: MONO,
+  fontSize: 10.5,
+  letterSpacing: '0.05em',
+  color: ACCENT,
+  fontWeight: 500,
+  background: 'none',
+  border: `1px solid ${HAIR}`,
+  borderRadius: 999,
+  padding: '3px 10px',
+  cursor: 'pointer',
+  marginLeft: 2,
+}
 
 export function PeriodStepper({
   value,
@@ -118,8 +132,13 @@ export function PeriodStepper({
         ›
       </button>
       {!isCurrent && (
-        <button data-testid={`${testidPrefix}-this-month`} onClick={() => onChange(currentPeriod(gran, thisMonth))} style={todayBtn}>
-          Today
+        <button
+          data-testid={`${testidPrefix}-this-month`}
+          onClick={() => onChange(currentPeriod(gran, thisMonth))}
+          title={`Back to the current ${unit}`}
+          style={todayBtn}
+        >
+          ↩ today
         </button>
       )}
       {onGranChange && (

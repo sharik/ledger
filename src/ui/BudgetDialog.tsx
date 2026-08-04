@@ -11,9 +11,9 @@
 // dialog rather than reinvented.
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
-import { budgetRollup, budgetScopeLabel, budgetScopeSpent, isMonthlyScope, scopeTrailingAvg } from '../analytics/budgets'
-import { monthEndProjectionThrough } from '../analytics/project'
-import { currentMonthKey, daysInMonth, dayOfToday, todayStr } from '../model/selectors'
+import { budgetRollup, budgetScopeLabel, budgetScopeSpent, budgetScopeYear, isMonthlyScope, monthlyEquivalent, scopeTrailingAvg } from '../analytics/budgets'
+import { monthEndProjectionThrough, yearElapsedFraction, yearEndProjection } from '../analytics/project'
+import { currentMonthKey, daysInMonth, dayOfToday, round2, todayStr } from '../model/selectors'
 import type { Budget, Category } from '../model/types'
 import { budgetCategoryIds, budgetKey, CAT_TRANSFERS } from '../model/types'
 import { useDerived, useStore, useStoreState } from './store'
@@ -53,6 +53,8 @@ const KINDS: { value: Kind; label: string; help: string }[] = [
 
 const needsOneCategory = (k: Kind) => k === 'monthly' || k === 'annual' || k === 'recurring-cat-m' || k === 'recurring-cat-y'
 const needsManyCategories = (k: Kind) => k === 'group-m' || k === 'group-y'
+/** Kinds whose SAVED amount is a year total — the /mo⇄/yr entry toggle applies to all of them. */
+const yearlyKind = (k: Kind) => k === 'annual' || k === 'group-y' || k === 'recurring-y' || k === 'recurring-cat-y'
 
 const inputStyle = { fontSize: 13, padding: '7px 10px', border: `1px solid ${HAIR}`, borderRadius: 5, background: SURFACE, color: INK }
 const label = { fontFamily: MONO, fontSize: 9.5, color: FAINT, letterSpacing: '.06em', display: 'block', marginBottom: 5 }
@@ -71,11 +73,14 @@ export function BudgetDialog({
   budget,
   onClose,
   onEditOther,
+  onFromHistory,
 }: {
   budget?: Budget
   onClose: () => void
   /** Re-point the dialog at an existing budget — the way out of a duplicate. */
   onEditOther: (id: string) => void
+  /** Swap to the bulk "from history" review. Rendered as a tab, create mode only. */
+  onFromHistory?: () => void
 }) {
   const store = useStore()
   const { vault } = useStoreState()
@@ -101,6 +106,8 @@ export function BudgetDialog({
   const [catIds, setCatIds] = useState<string[]>(budget?.scope?.kind === 'group' ? budget.scope.categoryIds : [])
   const [name, setName] = useState(budget?.name ?? '')
   const [amount, setAmount] = useState(budget ? String(budget.amount) : '')
+  /** Entry unit for yearly kinds — the record always stores the year total. */
+  const [unit, setUnit] = useState<'mo' | 'yr'>('yr')
   const [trackId, setTrackId] = useState(
     budget?.scope?.kind === 'tracking' ? budget.scope.trackingId : (vault.trackings[0]?.id ?? ''),
   )
@@ -126,7 +133,10 @@ export function BudgetDialog({
    *  overlap and save, so none of them can describe something different from the others. */
   const candidate = useMemo((): Budget => {
     const base = { id: budget?.id ?? 'preview', updatedAt: budget?.updatedAt ?? '', fixed: budget?.fixed }
-    const amt = Number(amount) || 0
+    const raw = Number(amount) || 0
+    // A figure typed at /mo describes the same budget as its ×12 at /yr; the record stores the
+    // year total, and rounding here means €2,500/yr → 208.33/mo → €2,500 survives a round trip.
+    const amt = yearlyKind(kind) && unit === 'mo' ? Math.round(raw * 12) : raw
     const trimmed = name.trim() || undefined
     if (kind === 'tracking') return { ...base, categoryId: CAT_TRANSFERS, amount: amt, name: trimmed, scope: { kind: 'tracking', trackingId: trackId } }
     if (kind === 'recurring-m' || kind === 'recurring-y') {
@@ -155,11 +165,16 @@ export function BudgetDialog({
       return { ...base, categoryId: catId, amount: amt, name: trimmed, scope: { kind: 'category-year', categoryId: catId, year: y } }
     }
     return { ...base, categoryId: catId, amount: amt, name: trimmed }
-  }, [kind, catId, catIds, name, amount, trackId, budget, housingId, year])
+  }, [kind, catId, catIds, name, amount, unit, trackId, budget, housingId, year])
 
   const spent = budgetScopeSpent(vault, candidate, cm, rb)
   const monthly = isMonthlyScope(candidate)
-  const proj = monthly ? monthEndProjectionThrough(spent, cm, through) : spent
+  const scopeYear = budgetScopeYear(candidate, cm)
+  const proj = monthly
+    ? monthEndProjectionThrough(spent, cm, through)
+    : scopeYear != null
+      ? yearEndProjection(spent, scopeYear, today)
+      : spent
   const avg3 = scopeTrailingAvg(vault, candidate, 3, cm, rb)
   const avg6 = scopeTrailingAvg(vault, candidate, 6, cm, rb)
 
@@ -244,8 +259,21 @@ export function BudgetDialog({
           </button>
         </div>
 
+        {/* Editing has no bulk counterpart, so the tabs only exist while creating. */}
+        {!budget && onFromHistory && <BudgetDialogTabs active="one" onHistory={onFromHistory} />}
+
         <Field title="WHAT SHOULD IT COUNT?">
-          <select data-testid="budget-scope" value={kind} onChange={(e) => setKind(e.target.value as Kind)} style={{ ...inputStyle, width: '100%' }}>
+          <select
+            data-testid="budget-scope"
+            value={kind}
+            onChange={(e) => {
+              const next = e.target.value as Kind
+              setKind(next)
+              // A stale /mo on a non-yearly kind would silently ×12 the typed figure.
+              if (!yearlyKind(next)) setUnit('yr')
+            }}
+            style={{ ...inputStyle, width: '100%' }}
+          >
             {KINDS.map((k) => (
               <option key={k.value} value={k.value} disabled={k.value === 'tracking' && vault.trackings.length === 0}>
                 {k.label}
@@ -305,7 +333,49 @@ export function BudgetDialog({
         </Field>
 
         <Field title="AMOUNT">
-          <input value={amount} onChange={(e) => setAmount(e.target.value)} placeholder="Amount" style={{ ...inputStyle, width: 160, fontFamily: MONO }} />
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <input value={amount} onChange={(e) => setAmount(e.target.value)} placeholder="Amount" style={{ ...inputStyle, width: 160, fontFamily: MONO }} />
+            {yearlyKind(kind) && (
+              <span style={{ display: 'inline-flex', border: `1px solid ${HAIR}`, borderRadius: 5, overflow: 'hidden' }}>
+                {(['mo', 'yr'] as const).map((u) => (
+                  <button
+                    key={u}
+                    data-testid="budget-amount-unit"
+                    data-unit={u}
+                    aria-pressed={unit === u}
+                    onClick={() => {
+                      if (unit === u) return
+                      // Converting the typed figure keeps the DESCRIBED budget the same across a
+                      // toggle; an empty field just switches the unit.
+                      const n = Number(amount)
+                      if (amount.trim() !== '' && Number.isFinite(n)) {
+                        setAmount(String(u === 'mo' ? round2(n / 12) : Math.round(n * 12)))
+                      }
+                      setUnit(u)
+                    }}
+                    style={{
+                      fontFamily: MONO,
+                      fontSize: 10.5,
+                      padding: '6px 9px',
+                      border: 'none',
+                      cursor: 'pointer',
+                      background: unit === u ? INK : SURFACE,
+                      color: unit === u ? SURFACE : MUT,
+                    }}
+                  >
+                    /{u}
+                  </button>
+                ))}
+              </span>
+            )}
+          </div>
+          {yearlyKind(kind) && amtOk && amtNum > 0 && (
+            <div data-testid="budget-amount-equiv" style={{ fontSize: 11.5, color: FAINT, marginTop: 6 }}>
+              {unit === 'mo'
+                ? `≈ ${fmt(Math.round(amtNum * 12))}/yr — saved as the year's total`
+                : `≈ ${fmt(round2(amtNum / 12))}/mo`}
+            </div>
+          )}
           {(avg3 !== null || avg6 !== null) && (
             <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap', marginTop: 8 }}>
               <span style={{ fontSize: 11.5, color: FAINT }}>What this actually cost you:</span>
@@ -335,7 +405,13 @@ export function BudgetDialog({
           <div style={{ border: `1px solid ${HAIR}`, borderRadius: 6, padding: '2px 14px', background: SURFACE }}>
             <BudgetRow
               cat={candidate.name ?? previewTitle(candidate, d, vault.trackings)}
-              caption={candidate.scope ? budgetScopeLabel(vault, candidate) : undefined}
+              caption={
+                candidate.scope
+                  ? monthlyEquivalent(candidate, cm) != null
+                    ? `${budgetScopeLabel(vault, candidate)} · ≈ ${fmt(monthlyEquivalent(candidate, cm)!)}/mo`
+                    : budgetScopeLabel(vault, candidate)
+                  : undefined
+              }
               color={candidate.scope?.kind === 'group' || candidate.scope?.kind === 'recurring' ? 'var(--accent)' : (d.catById.get(candidate.categoryId)?.color ?? 'var(--c-other)')}
               colors={candidate.scope?.kind === 'group' ? candidate.scope.categoryIds.map((id) => d.catById.get(id)?.color ?? 'var(--c-other)') : undefined}
               spent={spent}
@@ -343,7 +419,7 @@ export function BudgetDialog({
               proj={proj}
               domainMax={computeBudgetDomain([{ spent, budget: candidate.amount, proj }])}
               first
-              elapsed={monthly ? dayOfToday() / daysInMonth(cm) : 1}
+              elapsed={monthly ? dayOfToday() / daysInMonth(cm) : scopeYear != null ? yearElapsedFraction(scopeYear, today) : 1}
             />
           </div>
         </Field>
@@ -403,6 +479,44 @@ function previewTitle(b: Budget, d: ReturnType<typeof useDerived>, trackings: { 
     return names.length <= 2 ? names.join(' + ') : `${names.slice(0, 2).join(' + ')} +${names.length - 2} more`
   }
   return d.catById.get(b.categoryId)?.name ?? '—'
+}
+
+/** The One budget ⇄ From your history tab bar, shared with BudgetSetupDialog — the two are one
+ *  "add budgets" surface to the user, even though each mode is its own component. */
+export function BudgetDialogTabs({ active, onOne, onHistory }: { active: 'one' | 'history'; onOne?: () => void; onHistory?: () => void }) {
+  const tabs = [
+    { key: 'one' as const, label: 'One budget', go: onOne },
+    { key: 'history' as const, label: 'From your history', go: onHistory },
+  ]
+  return (
+    <div style={{ display: 'flex', gap: 20, borderBottom: `1px solid ${HAIR}`, marginBottom: 18 }}>
+      {tabs.map((t) => {
+        const on = t.key === active
+        return (
+          <button
+            key={t.key}
+            data-testid="budget-dialog-tab"
+            data-tab={t.key}
+            aria-selected={on}
+            onClick={() => !on && t.go?.()}
+            style={{
+              fontSize: 12.5,
+              fontWeight: on ? 600 : 400,
+              color: on ? INK : MUT,
+              background: 'none',
+              border: 'none',
+              borderBottom: `2px solid ${on ? INK : 'transparent'}`,
+              marginBottom: -1,
+              padding: '0 0 8px',
+              cursor: on ? 'default' : 'pointer',
+            }}
+          >
+            {t.label}
+          </button>
+        )
+      })}
+    </div>
+  )
 }
 
 function Field({ title, children }: { title: string; children: React.ReactNode }) {

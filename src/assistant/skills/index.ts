@@ -11,6 +11,7 @@
 // copies the body into a user skill, and from then on the user's version is the one the model reads.
 import type { SkillView } from '../tools'
 import balances from './balances.md?raw'
+import budgeting from './budgeting.md?raw'
 import comparisons from './comparisons.md?raw'
 import ledgerModel from './ledger-model.md?raw'
 import valuation from './valuation.md?raw'
@@ -74,7 +75,7 @@ export function normalizeName(raw: string): string {
     .slice(0, 48)
 }
 
-const SOURCES = [ledgerModel, comparisons, balances, valuation]
+const SOURCES = [ledgerModel, comparisons, balances, budgeting, valuation]
 
 /**
  * Parsed at module load. A built-in that fails to parse is a build-time bug, so it is dropped loudly.

@@ -362,7 +362,7 @@ export const EXPLAIN = {
       'before it appears.',
     excludes: [
       'All bars on this screen share one horizontal scale, so a short bar can mean a small budget rather than careful spending',
-      'A row with a scope chip (annual, per-trip, recurring) counts a different period than the month shown, and has no "today" marker',
+      'A row with a year scope (annual, or yearly recurring) counts a calendar year: its caption shows the ≈ €/mo equivalent of the yearly amount, its "today" marker sits at the fraction of that year already gone (calendar days, not statement coverage), and its dashed marker is a year-end pace. A per-trip row counts its trip and has no marker at all.',
       'Charges you have not imported yet. When your statements stop before today, a dotted "data" marker shows where they stop — everything to the right of it is missing from the bar, not spent.',
     ],
     next: [{ label: 'Open this category’s transactions', tab: 'txns' }],
@@ -381,7 +381,7 @@ export const EXPLAIN = {
       'them counts once. On the plan side, a budget sitting entirely inside a wider one is a limit within ' +
       'that budget, not extra plan, so only the outermost amounts are added.',
     excludes: [
-      'Annual and per-trip budgets — they cover a different period, so adding them into a monthly total would be a lie. They are listed separately as memo lines.',
+      'Annual and per-trip budgets — they cover a different period, so adding them into a monthly total would be a lie. They are listed separately as memo lines; the memo\'s "(≈ €X/mo)" is the annual amount ÷ 12, shown for reading only and never added into the total.',
       'A recurring budget that spans all categories: it is an overlay across every category rather than a period of its own, so it is a memo line too',
       'Nothing is dropped for overlapping. If two budgets share a category and neither is inside the other, both amounts are counted and the screen says so — that plan really is ambiguous.',
     ],

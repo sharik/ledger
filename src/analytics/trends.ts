@@ -46,7 +46,7 @@ function mean(xs: number[]): number {
   return xs.length ? xs.reduce((a, b) => a + b, 0) / xs.length : 0
 }
 
-function median(xs: number[]): number {
+export function median(xs: number[]): number {
   if (xs.length === 0) return 0
   const s = [...xs].sort((a, b) => a - b)
   const m = Math.floor(s.length / 2)

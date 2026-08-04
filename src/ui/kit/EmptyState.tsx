@@ -30,12 +30,14 @@ export interface EmptyStateProps {
   body?: ReactNode
   /** The action that fixes THIS reason. */
   action?: { label: string; onClick: () => void }
+  /** A second way out, when the surface genuinely has two (e.g. add one vs suggest many). */
+  secondaryAction?: { label: string; onClick: () => void }
   testid?: string
   /** Compact rendering for a card that is already small. */
   dense?: boolean
 }
 
-export function EmptyState({ basis, title, body, action, testid, dense = false }: EmptyStateProps) {
+export function EmptyState({ basis, title, body, action, secondaryAction, testid, dense = false }: EmptyStateProps) {
   return (
     <div
       data-testid={testid}
@@ -55,6 +57,15 @@ export function EmptyState({ basis, title, body, action, testid, dense = false }
           style={{ fontSize: 12.5, color: 'var(--accent)', background: 'none', border: 'none', cursor: 'pointer', marginTop: 9, padding: 0 }}
         >
           {action.label} →
+        </button>
+      )}
+      {secondaryAction && (
+        <button
+          data-testid={testid ? `${testid}-secondary` : undefined}
+          onClick={secondaryAction.onClick}
+          style={{ fontSize: 12.5, color: 'var(--accent)', background: 'none', border: 'none', cursor: 'pointer', marginTop: 9, padding: 0, marginLeft: action ? 18 : 0 }}
+        >
+          {secondaryAction.label} →
         </button>
       )}
     </div>

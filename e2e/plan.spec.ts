@@ -95,11 +95,36 @@ test.describe('budget roll-up', () => {
     await page.getByRole('button', { name: '+ Budget' }).click()
     await page.getByTestId('budget-scope').selectOption('annual')
     await page.getByPlaceholder('Amount').fill('2400')
+    await expect(page.getByTestId('budget-amount-equiv')).toContainText('≈ €200/mo')
     await page.getByTestId('budget-save').click()
 
     await expect(page.getByTestId('rollup-memo')).toContainText('annual')
+    // The memo and the row both carry the derived monthly equivalent — for reading,
+    // never added into the total (the data-pct assertion below is that rule).
+    await expect(page.getByTestId('rollup-memo')).toContainText('≈ €200/mo')
+    await expect(page.locator('[data-screen="plan"]')).toContainText('annual · ≈ €200/mo')
     const after = await page.getByTestId('budget-rollup').locator('[data-pct]').first().getAttribute('data-pct')
     expect(after).toBe(before)
+  })
+
+  test('an amount typed at /mo saves the year total, and reopens at /yr', async ({ page }) => {
+    await setupVault(page)
+    await goTab(page, 'plan')
+
+    await page.getByRole('button', { name: '+ Budget' }).click()
+    await page.getByTestId('budget-scope').selectOption('annual')
+    await page.locator('[data-testid="budget-amount-unit"][data-unit="mo"]').click()
+    await page.getByPlaceholder('Amount').fill('200')
+    await expect(page.getByTestId('budget-amount-equiv')).toContainText('≈ €2,400/yr')
+    await page.getByTestId('budget-save').click()
+    await expect(page.getByTestId('rollup-memo')).toContainText('€2,400')
+
+    // Edit reopens showing the stored year total at /yr. The new budget is appended last.
+    await page.locator('[data-screen="plan"]').getByRole('button', { name: 'Budget options' }).last().click()
+    await page.getByRole('button', { name: 'Edit budget…' }).click()
+    await expect(page.getByPlaceholder('Amount')).toHaveValue('2400')
+    await expect(page.locator('[data-testid="budget-amount-unit"][data-unit="yr"]')).toHaveAttribute('aria-pressed', 'true')
+    await page.getByTestId('budget-cancel').click()
   })
 
   // The rule the user asked for: budgets may overlap, and a transaction two of them cover is
@@ -276,5 +301,89 @@ test.describe('goals can be set up', () => {
     await expect(page.getByTestId('goal-dialog')).toBeVisible()
     await page.keyboard.press('Escape')
     await expect(page.getByTestId('goal-dialog')).toHaveCount(0)
+  })
+})
+
+test.describe('budgets from history', () => {
+  /** The bulk review lives behind + Budget as the "From your history" tab. */
+  async function openSetup(page: import('@playwright/test').Page): Promise<void> {
+    await page.getByRole('button', { name: '+ Budget' }).click()
+    await page.locator('[data-testid="budget-dialog-tab"][data-tab="history"]').click()
+    await expect(page.getByTestId('budget-setup-dialog')).toBeVisible()
+  }
+
+  test('review, untick, edit, apply as ONE undoable batch — and no re-proposal after', async ({ page }) => {
+    await setupVault(page)
+    await goTab(page, 'plan')
+    const plan = page.locator('[data-screen="plan"]')
+    const before = await plan.getByTestId('budget-open').count()
+
+    await openSetup(page)
+
+    // The tabs swap between the two modes of the same "add budgets" surface.
+    await page.locator('[data-testid="budget-dialog-tab"][data-tab="one"]').click()
+    await expect(page.getByTestId('budget-dialog')).toBeVisible()
+    await page.locator('[data-testid="budget-dialog-tab"][data-tab="history"]').click()
+    await expect(page.getByTestId('budget-setup-dialog')).toBeVisible()
+
+    const rows = page.getByTestId('budget-setup-row')
+    const n = await rows.count()
+    expect(n).toBeGreaterThanOrEqual(2) // the demo vault has unbudgeted categories with history
+
+    // Categories that already carry a budget are named as skipped, not proposed again.
+    await expect(page.getByTestId('budget-setup-skipped')).toContainText('Groceries')
+
+    // Nothing is pre-chosen: choosing is the user's gesture, so Apply starts disabled.
+    await expect(page.getByTestId('budget-setup-apply')).toBeDisabled()
+
+    // A row switches period and shows THAT period's figure: /yr swaps in the yearly total,
+    // /mo brings the monthly average back.
+    const row0 = rows.nth(0)
+    const monthlyFig = await row0.getByTestId('budget-setup-amount').inputValue()
+    await row0.locator('[data-testid="budget-setup-period"][data-period="annual"]').click()
+    await expect(row0).toHaveAttribute('data-kind', 'annual')
+    const annualFig = await row0.getByTestId('budget-setup-amount').inputValue()
+    expect(Number(annualFig)).toBeGreaterThan(Number(monthlyFig))
+    // A /yr row states its derived monthly equivalent, live from the amount field.
+    await expect(row0).toContainText('≈')
+    await expect(row0).toContainText('/mo')
+    await row0.locator('[data-testid="budget-setup-period"][data-period="monthly"]').click()
+    await expect(row0.getByTestId('budget-setup-amount')).toHaveValue(monthlyFig)
+
+    // Add all, then leave one out and change another's amount — the worksheet is the user's.
+    await page.getByTestId('budget-setup-add-all').click()
+    await rows.nth(0).getByTestId('budget-setup-add').click() // toggles it back out
+    await expect(rows.nth(0)).toHaveAttribute('data-on', '0')
+    const keptCat = (await rows.nth(1).getAttribute('data-cat'))!
+    await rows.nth(1).getByTestId('budget-setup-amount').fill('123')
+    await page.getByTestId('budget-setup-apply').click()
+    await expect(page.getByTestId('budget-setup-dialog')).toHaveCount(0)
+
+    await expect(page.getByTestId('toast')).toContainText(`${n - 1} budget`)
+    await expect(plan.getByTestId('budget-open')).toHaveCount(before + n - 1)
+
+    // One undo reverses the whole batch — before the toast's 3.5s window closes.
+    await page.getByTestId('toast-undo').click()
+    await expect(plan.getByTestId('budget-open')).toHaveCount(before)
+
+    // Applied budgets are ordinary records: apply everything, and reopening proposes none of it.
+    await openSetup(page)
+    await page.getByTestId('budget-setup-add-all').click()
+    await page.getByTestId('budget-setup-apply').click()
+    await expect(page.getByTestId('budget-setup-dialog')).toHaveCount(0)
+    await openSetup(page)
+    await expect(page.locator(`[data-testid="budget-setup-row"][data-cat="${keptCat}"]`)).toHaveCount(0)
+    // Every proposal was applied, so the dialog says there is nothing new — with the data to
+    // prove it (basis ok), not a thin-history excuse.
+    await expect(page.getByTestId('budget-setup-empty')).toHaveAttribute('data-basis', 'ok')
+    await page.getByTestId('budget-setup-cancel').click()
+  })
+
+  test('an empty vault says there is nothing to suggest from, and offers no Apply', async ({ page }) => {
+    await setupVault(page, { demo: false })
+    await goTab(page, 'plan')
+    await page.getByTestId('plan-budgets-empty-secondary').click()
+    await expect(page.getByTestId('budget-setup-empty')).toHaveAttribute('data-basis', 'empty')
+    await expect(page.getByTestId('budget-setup-apply')).toHaveCount(0)
   })
 })
