@@ -91,9 +91,12 @@ fix(sync): keep the grant when a token refresh 5xxs
 docs: explain the merge decision table
 ```
 
-Types: `feat`, `fix`, `docs`, `style`, `refactor`, `perf`, `test`, `build`, `ci`, `chore`,
-`revert`. Scopes follow the codebase: `import`, `sync`, `analytics`, `assistant`, `ui`, `persist`,
-`model`, `e2e`, `deps`. Breaking changes take a `!` or a `BREAKING CHANGE:` footer.
+Types are checked and must be one of `feat`, `fix`, `docs`, `style`, `refactor`, `perf`, `test`,
+`build`, `ci`, `chore`, `revert`. Breaking changes take a `!` or a `BREAKING CHANGE:` footer.
+
+The scope is optional and not checked — name the area you touched (`import`, `sync`, `budgets`,
+`trips`, `charts`, `assistant`, `deps`, …). The changelog groups by type, not scope, so the useful
+thing is that it reads clearly, not that it matches a list.
 
 Sign off your commits (`git commit -s`) to certify the
 [Developer Certificate of Origin](https://developercertificate.org/). There is no CLA.

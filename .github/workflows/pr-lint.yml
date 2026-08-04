@@ -36,16 +36,11 @@ jobs:
             ci
             chore
             revert
-          scopes: |
-            import
-            sync
-            analytics
-            assistant
-            ui
-            persist
-            model
-            e2e
-            deps
+          # No scope allowlist. Scopes are optional and free-form: release-please groups the
+          # changelog by TYPE, so a closed list buys no consistency where it matters, while every
+          # new feature area needs a config change before its first PR can pass. That is exactly
+          # how `feat(budgets)` got rejected — the list was derived from src/ directory names and
+          # the app had already grown past them.
           requireScope: false
           subjectPattern: ^(?![A-Z])(?!.*\.$).+$
           subjectPatternError: |
