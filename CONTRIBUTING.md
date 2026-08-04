@@ -116,6 +116,32 @@ Keep PRs focused. A change that fixes a bug and also reformats a file is two PRs
 - **Migrations must be deterministic too.** Two devices migrating the same vault independently must
   produce identical records, ids included. See [docs/architecture.md](docs/architecture.md).
 
+## Dependencies
+
+Dependabot proposes weekly updates and CI decides them, so most of this takes care of itself. One
+dependency is different and needs a person.
+
+**`xlsx` does not come from npm.** SheetJS stopped publishing there after 0.18.5, and that version
+carries two advisories — prototype pollution ([GHSA-4r6h-8v6p-xvw6](https://github.com/advisories/GHSA-4r6h-8v6p-xvw6))
+and a ReDoS ([GHSA-5pgg-2g8v-p4x9](https://github.com/advisories/GHSA-5pgg-2g8v-p4x9)) — which the
+registry copy will carry forever. Releases live on `cdn.sheetjs.com` instead, and `package.json`
+points at a tarball there.
+
+The consequence worth knowing: **Dependabot cannot see it and `npm audit` will not warn about it.**
+No tooling watches this one. To check and bump it:
+
+```sh
+# what is available: https://cdn.sheetjs.com/
+npm install "https://cdn.sheetjs.com/xlsx-<version>/xlsx-<version>.tgz"
+npm test          # the golden fixtures are the proof — see below
+```
+
+The golden tests are what make such a bump safe to trust: they assert byte-exact parse output for
+every committed fixture across the four institutions that have them, so a version that reads files
+differently
+fails immediately rather than silently changing what people's statements mean. The lockfile still
+records an integrity hash, so `npm ci` verifies the tarball as it would any registry package.
+
 ## Releases
 
 Maintainer only. [release-please](https://github.com/googleapis/release-please) reads Conventional
