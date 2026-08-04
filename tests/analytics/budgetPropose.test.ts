@@ -82,6 +82,21 @@ describe('proposeBudgets — lumps on a monthly base default to annual', () => {
     expect(p.median).toBe(23)
   })
 
+  it('a premium OUTSIDE the 6-month window still defaults to annual — detection is by the 12-month mean', () => {
+    const v = buildVault((v) => {
+      fillMonths(v, YEAR)
+      for (const mk of YEAR) txn(v, `${mk}-05`, 'Insurer', 'Insurance', -23)
+      txn(v, `${YEAR[2]}-10`, 'Insurer', 'Insurance', -2400) // premium 10 months back
+    })
+    const r = proposeBudgets(derive(v), ANCHOR)
+    const p = of(r, catId(v, 'Insurance'))!
+    expect(p.kind).toBe('annual')
+    expect(p.cadence).toBe('yearly')
+    expect(p.mixed).toBe(true)
+    expect(p.annual).toBe(12 * 23 + 2400)
+    expect(p.monthly).toBe(23) // the /mo switch still shows the honest recent mean
+  })
+
   it('quarterly top-ups on a monthly base read as quarterly lumps', () => {
     const v = buildVault((v) => {
       fillMonths(v, YEAR)

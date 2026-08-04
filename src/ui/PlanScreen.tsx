@@ -7,7 +7,7 @@ import { monthEndProjectionThrough, yearElapsedFraction, yearEndProjection } fro
 import { daysBetween } from '../analytics/selections'
 import { goalState, goalStatus } from '../analytics/goals'
 import { budgetRollup, budgetScopeSpent, budgetScopeLabel, budgetScopeYear, isMonthlyScope, monthlyEquivalent, recurringBreakdown } from '../analytics/budgets'
-import { GoalRow, BudgetRow } from './kit/rows'
+import { GoalRow, BudgetRow, groupTitle } from './kit/rows'
 import { BarRows, DivergingRows, computeBudgetDomain } from './charts'
 import { useFreshness } from './freshness'
 import { useRateBook } from './fxCtx'
@@ -60,12 +60,6 @@ function budgetDrill(b: Budget, mk: MonthKey): TxnFilter {
     return { cats: scope.categoryIds.join(','), from: yr ? `${scope.year}-01-01` : from, to: yr ? `${scope.year}-12-31` : to }
   }
   return { from, to } // unreachable: every scope kind has an arm (the `budgetKey` discipline)
-}
-
-/** A group budget with no name of its own: first two members, then "+N more". */
-function groupTitle(members: ({ name: string } | undefined)[]): string {
-  const names = members.map((m) => m?.name ?? '—')
-  return names.length <= 2 ? names.join(' + ') : `${names.slice(0, 2).join(' + ')} +${names.length - 2} more`
 }
 
 const addBtn = { fontSize: 12, color: ACCENT, fontWeight: 500, background: 'none', border: 'none', cursor: 'pointer' }

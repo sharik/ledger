@@ -139,6 +139,12 @@ function MenuBtn({ children, danger, onClick }: { children: React.ReactNode; dan
   )
 }
 
+/** A group budget with no name of its own: first two members, then "+N more". */
+export function groupTitle(members: ({ name: string } | undefined)[]): string {
+  const names = members.map((m) => m?.name ?? '—')
+  return names.length <= 2 ? names.join(' + ') : `${names.slice(0, 2).join(' + ')} +${names.length - 2} more`
+}
+
 export interface BudgetRowProps {
   cat: string
   caption?: string // scope caption (annual / per-event); absent ⇒ monthly

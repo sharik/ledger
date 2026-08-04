@@ -9,10 +9,10 @@
 //  - Spend in most complete months, mean close to median → monthly (the usual kind).
 //  - Spend in few months (insurance paid quarterly, a yearly fee alone in its category) →
 //    annual, sized on the trailing-12-complete-month total.
-//  - Spend in most months BUT the 6-month mean far above the 12-month median → a lump riding on
-//    a monthly base (a yearly premium over small monthly charges). A monthly budget at the mean
-//    would sit 10× over the typical month and still blow up when the lump lands, so the default
-//    is annual on the total, with the lump's rhythm stated.
+//  - Spend in most months BUT the 12-month mean far above the 12-month median → a lump riding
+//    on a monthly base (a yearly premium over small monthly charges). A monthly budget sized on
+//    a mean would sit far over the typical month and still blow up when the lump lands, so the
+//    default is annual on the total, with the lump's rhythm stated.
 //
 // Two sources feed one proposal, deliberately asymmetric: the monthly amount comes from
 // `scopeTrailingAvg` (budgetScopeSpent arithmetic: FX-honest, refund-netted — the exact number
@@ -115,7 +115,8 @@ export function proposeBudgets(d: Derived, anchor: MonthKey = d.currentMonth, ra
     const avg = scopeTrailingAvg(d.vault, proposalProbe({ categoryId: c.id, kind: 'monthly' }, anchor), PROPOSE_WINDOW, anchor, rates)
     const monthly = avg == null ? null : Math.round(avg)
     // An annual total from a partial year would be a guess, so it is only offered at W === 12.
-    const annual = fullYear ? Math.round(series.reduce((a, b) => a + b, 0)) : null
+    const total = series.reduce((a, b) => a + b, 0)
+    const annual = fullYear ? Math.round(total) : null
     const med = Math.round(median(series))
 
     let kind: 'monthly' | 'annual'
@@ -123,9 +124,12 @@ export function proposeBudgets(d: Derived, anchor: MonthKey = d.currentMonth, ra
     let mixed = false
     if (monthsWithSpend / W >= MONTHLY_MIN_RATIO) {
       kind = 'monthly'
-      // Lump on a monthly base: the mean towers over the median. Read the rhythm off the spike
-      // months (spend > SPIKE_RATIO × median) and default to annual — when a full year backs it.
-      if (annual != null && monthly != null && med > 0 && monthly >= LUMP_MIN_RATIO * med && monthly - med >= LUMP_MIN_ABS) {
+      // Lump on a monthly base: the year's mean towers over the median — measured over the same
+      // 12 months, so a premium 8 months back weighs the same as one last month. Read the rhythm
+      // off the spike months (spend > SPIKE_RATIO × median) and default to annual — when a full
+      // year backs it.
+      const mean12 = total / W
+      if (annual != null && med > 0 && mean12 >= LUMP_MIN_RATIO * med && mean12 - med >= LUMP_MIN_ABS) {
         const spikes = series.flatMap((v, i) => (v > SPIKE_RATIO * med ? [i] : []))
         const lumpCadence = spikes.length ? cadenceOfGaps(spikes, W) : null
         if (lumpCadence != null) {

@@ -32,7 +32,7 @@ import { dayRange, elapsedDays, pctDelta, ptsDelta } from './format'
 import { MetricCell, big } from './kit/metrics'
 import { Tri } from './kit'
 import { goalState, goalStatus } from '../analytics/goals'
-import { GoalRow, BudgetRow } from './kit/rows'
+import { GoalRow, BudgetRow, groupTitle } from './kit/rows'
 import { ScreenIntro } from './ScreenIntro'
 import { StartHere } from './StartHere'
 
@@ -717,12 +717,17 @@ export function DashboardScreen() {
           return rows.map(({ b, year, spent, proj }, i) => {
             const catId = budgetCategoryIds(b)[0]
             const perMonth = monthlyEquivalent(b, cm)
+            // A group budget keeps the same identity Plan gives it — composite title, accent,
+            // member swatches — not its first member's name and color.
+            const grp = b.scope?.kind === 'group' ? b.scope : undefined
+            const members = grp ? grp.categoryIds.map((id) => catInfo(id)) : []
             return (
               <BudgetRow
                 key={b.id}
-                cat={b.name ?? (catId ? catInfo(catId).name : 'Recurring')}
+                cat={b.name ?? (grp ? groupTitle(members) : catId ? catInfo(catId).name : 'Recurring')}
                 caption={b.scope ? `${budgetScopeLabel(vault, b)}${perMonth != null ? ` · ≈ ${fmt(perMonth)}/mo` : ''}` : undefined}
-                color={catId ? catInfo(catId).color : 'var(--accent)'}
+                color={grp || !catId ? 'var(--accent)' : catInfo(catId).color}
+                colors={grp ? members.map((m) => m.color) : undefined}
                 spent={spent}
                 budget={b.amount}
                 proj={proj}

@@ -316,7 +316,8 @@ export function BudgetSetupDialog({ onClose, onOneBudget }: {
             Add {included.length} budget{included.length === 1 ? '' : 's'}
           </button>
           <span data-testid="budget-setup-total" style={{ fontFamily: MONO, fontSize: 11.5, color: MUT }}>
-            {fmt(monthlyTotal)}/mo{annualTotal > 0 ? ` + ${fmt(annualTotal)}/yr` : ''}
+            {/* An annual-only set has no monthly figure worth stating — "€0/mo +" is noise. */}
+            {[monthlyTotal > 0 || annualTotal === 0 ? `${fmt(monthlyTotal)}/mo` : '', annualTotal > 0 ? `${fmt(annualTotal)}/yr` : ''].filter(Boolean).join(' + ')}
             {result.typicalIncome > 0 ? ` · typical monthly income ${fmt(result.typicalIncome)}` : ''}
           </span>
           {problem && <span data-testid="budget-setup-problem" style={{ fontSize: 12, color: MUT }}>{problem}</span>}
