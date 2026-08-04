@@ -26,7 +26,11 @@ export default defineConfig({
   reporter: process.env.CI ? [['github'], ['list']] : [['list']],
   use: {
     baseURL: 'http://localhost:5199',
-    trace: 'retain-on-failure',
+    // 'retain-on-failure' RECORDS a trace for every test and deletes it on success — a DOM snapshot
+    // per action, zipped and thrown away, once per test on a green run. Retries are 2 in CI, so a
+    // real failure still yields a trace on attempt 2; what is given up is the trace of a flake that
+    // passes on retry, which was never the interesting one.
+    trace: 'on-first-retry',
     timezoneId: 'UTC',
   },
   projects: [
