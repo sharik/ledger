@@ -8,6 +8,8 @@ import {
   budgetScopeLabel,
   budgetScopeSpent,
   budgetScopeTxns,
+  budgetScopeYear,
+  monthlyEquivalent,
   recurringBreakdown,
   scopeTrailingAvg,
 } from '../../src/analytics/budgets'
@@ -353,5 +355,29 @@ describe('multi-currency (FX chain, not 1:1)', () => {
     v.budgets.push({ id: 'b', updatedAt: now(), categoryId: catId(v, 'Groceries'), amount: 400 })
     const roll = budgetRollup(v, '2026-07', (s) => s)
     expect(roll.totalSpent).toBe(62) // 1000 × 0.022 + 40
+  })
+})
+
+describe('budgetScopeYear · monthlyEquivalent', () => {
+  const base = { id: 'b', updatedAt: '', categoryId: 'cat-groceries', amount: 2400 }
+
+  it('year-windowed scopes carry their year; recurring-yearly follows the viewed month', () => {
+    expect(budgetScopeYear({ ...base, scope: { kind: 'category-year', categoryId: 'cat-groceries', year: 2026 } }, '2027-03')).toBe(2026)
+    expect(budgetScopeYear({ ...base, scope: { kind: 'group', categoryIds: ['a', 'b'], year: 2025 } }, '2026-07')).toBe(2025)
+    expect(budgetScopeYear({ ...base, scope: { kind: 'recurring', cadence: 'yearly' } }, '2026-07')).toBe(2026)
+  })
+
+  it('month-windowed and tracking scopes have no year', () => {
+    expect(budgetScopeYear(base, '2026-07')).toBeNull() // legacy monthly
+    expect(budgetScopeYear({ ...base, scope: { kind: 'group', categoryIds: ['a', 'b'] } }, '2026-07')).toBeNull()
+    expect(budgetScopeYear({ ...base, scope: { kind: 'recurring', cadence: 'monthly' } }, '2026-07')).toBeNull()
+    expect(budgetScopeYear({ ...base, scope: { kind: 'tracking', trackingId: 't' } }, '2026-07')).toBeNull()
+  })
+
+  it('monthlyEquivalent is amount/12 for year scopes, null otherwise or at €0', () => {
+    const annual = { ...base, scope: { kind: 'category-year' as const, categoryId: 'cat-groceries', year: 2026 } }
+    expect(monthlyEquivalent(annual, '2026-07')).toBe(200)
+    expect(monthlyEquivalent({ ...annual, amount: 0 }, '2026-07')).toBeNull()
+    expect(monthlyEquivalent(base, '2026-07')).toBeNull()
   })
 })

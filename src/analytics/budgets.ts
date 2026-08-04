@@ -135,6 +135,26 @@ export function isMonthlyScope(budget: Budget): boolean {
   return false
 }
 
+/**
+ * The calendar year this budget measures when viewed at `mk`, or null when it is not
+ * year-windowed. `category-year` and group-with-year carry their own year; a yearly
+ * recurring budget follows the viewed month's year (`budgetMatcher` windows it the same
+ * way); tracking and the monthly scopes have no year.
+ */
+export function budgetScopeYear(budget: Budget, mk: MonthKey): number | null {
+  const s = budget.scope
+  if (!s) return null
+  if (s.kind === 'category-year') return s.year
+  if (s.kind === 'group') return s.year ?? null
+  if (s.kind === 'recurring') return s.cadence === 'yearly' ? Number(mk.slice(0, 4)) : null
+  return null // tracking: its span is not a calendar year
+}
+
+/** €/mo equivalent of a year-scoped budget's amount (amount / 12) — derived, never stored. */
+export function monthlyEquivalent(budget: Budget, mk: MonthKey): number | null {
+  return budgetScopeYear(budget, mk) != null && budget.amount > 0 ? round2(budget.amount / 12) : null
+}
+
 export interface PeriodSpend {
   /** MonthKey or year string — also the drill period. */
   key: string

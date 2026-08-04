@@ -3,10 +3,11 @@ import { useEffect, useRef, useState } from 'react'
 import { ACCENT, BRICK, FAINT, GREEN, HAIR, INK, MONO, MUT, SURFACE, fmt } from './theme'
 import { useDerived, useStore, useStoreState } from './store'
 import { currentMonthKey, dayOfToday, daysInMonth, todayStr } from '../model/selectors'
-import { monthEndProjectionThrough } from '../analytics/project'
+import { monthEndProjectionThrough, yearElapsedFraction, yearEndProjection } from '../analytics/project'
+import { daysBetween } from '../analytics/selections'
 import { goalState, goalStatus } from '../analytics/goals'
-import { budgetRollup, budgetScopeSpent, budgetScopeLabel, isMonthlyScope, recurringBreakdown } from '../analytics/budgets'
-import { GoalRow, BudgetRow } from './kit/rows'
+import { budgetRollup, budgetScopeSpent, budgetScopeLabel, budgetScopeYear, isMonthlyScope, monthlyEquivalent, recurringBreakdown } from '../analytics/budgets'
+import { GoalRow, BudgetRow, groupTitle } from './kit/rows'
 import { BarRows, DivergingRows, computeBudgetDomain } from './charts'
 import { useFreshness } from './freshness'
 import { useRateBook } from './fxCtx'
@@ -17,6 +18,7 @@ import type { Budget, MonthKey } from '../model/types'
 import { formatHash, parseHash, type TxnFilter } from './route'
 import { BudgetDetail } from './BudgetDetail'
 import { BudgetDialog } from './BudgetDialog'
+import { BudgetSetupDialog } from './BudgetSetupDialog'
 import { GoalDialog, detailOf } from './GoalDialog'
 import { Explain } from './explain'
 import { ScreenIntro } from './ScreenIntro'
@@ -58,12 +60,6 @@ function budgetDrill(b: Budget, mk: MonthKey): TxnFilter {
     return { cats: scope.categoryIds.join(','), from: yr ? `${scope.year}-01-01` : from, to: yr ? `${scope.year}-12-31` : to }
   }
   return { from, to } // unreachable: every scope kind has an arm (the `budgetKey` discipline)
-}
-
-/** A group budget with no name of its own: first two members, then "+N more". */
-function groupTitle(members: ({ name: string } | undefined)[]): string {
-  const names = members.map((m) => m?.name ?? '—')
-  return names.length <= 2 ? names.join(' + ') : `${names.slice(0, 2).join(' + ')} +${names.length - 2} more`
 }
 
 const addBtn = { fontSize: 12, color: ACCENT, fontWeight: 500, background: 'none', border: 'none', cursor: 'pointer' }
@@ -143,6 +139,7 @@ export function PlanScreen() {
   const [openB, setOpenB] = useState<string | null>(null) // budget id whose history panel is open
   /** The budget dialog: `null` closed, `{}` adding, `{ id }` editing that budget. */
   const [dlg, setDlg] = useState<{ id?: string } | null>(null)
+  const [setup, setSetup] = useState(false) // the bulk "budgets from history" review
 
   const goals = vault.goals.filter((g) => !g.archived)
   const archivedGoals = vault.goals.filter((g) => g.archived)
@@ -252,24 +249,28 @@ export function PlanScreen() {
             title="No budgets yet."
             body="A budget can cover one category or several, a month or a whole year, a recurring cadence, or one trip. Spend is always derived from your transactions, never typed in."
             action={{ label: 'Add a budget', onClick: () => setDlg({}) }}
+            secondaryAction={{ label: 'Suggest from history', onClick: () => setSetup(true) }}
           />
         )}
         {budgets.length > 0 && (() => {
           const roll = budgetRollup(vault, cm, projectTo, rb)
           const memoParts = [
-            roll.memo.annual > 0 && `annual ${fmt(roll.memo.annual)}`,
+            roll.memo.annual > 0 && `annual ${fmt(roll.memo.annual)} (≈ ${fmt(roll.memo.annual / 12)}/mo)`,
             roll.memo.perTrip > 0 && `per-trip ${fmt(roll.memo.perTrip)}`,
             roll.memo.crossCategoryRecurring > 0 && `recurring across categories ${fmt(roll.memo.crossCategoryRecurring)}`,
           ].filter(Boolean) as string[]
 
           const rows = budgets.map((b) => {
-            // A budget covering a different period than this month has no monthly pace and no
-            // "today" — but a MONTHLY group budget does, which is why this asks about the
-            // period rather than merely whether a scope exists.
+            // A budget covering a different period than this month has no MONTHLY pace — but a
+            // year-scoped one has a year of its own to pace against: its marker sits at that
+            // year's elapsed fraction (calendar days) and its dashed marker is a year-end pace.
+            // Only a per-trip budget keeps no time context at all.
             const monthly = isMonthlyScope(b)
             const spent = budgetScopeSpent(vault, b, cm, rb)
-            const proj = monthly ? projectTo(spent) : spent
-            return { b, monthly, spent, proj }
+            const year = budgetScopeYear(b, cm)
+            const yElapsed = year != null ? yearElapsedFraction(year, today) : null
+            const proj = monthly ? projectTo(spent) : year != null ? yearEndProjection(spent, year, today) : spent
+            return { b, monthly, spent, proj, year, yElapsed }
           })
 
           // ONE domain across the roll-up row AND every category row. Two separate calls put
@@ -353,7 +354,7 @@ export function PlanScreen() {
                 </div>
               )}
 
-              {rows.map(({ b, monthly, spent, proj }, i) => {
+              {rows.map(({ b, monthly, spent, proj, year, yElapsed }, i) => {
                 const rec = b.scope?.kind === 'recurring' ? b.scope : undefined
                 // A recurring budget is cross-category ("Recurring", with a breakdown) unless it
                 // targets one category (#12c), in which case it reads like an ordinary category row.
@@ -364,12 +365,13 @@ export function PlanScreen() {
                 const cat = d.catById.get(b.categoryId)
                 const members = grp ? grp.categoryIds.map((id) => d.catById.get(id)) : []
                 const label = budgetScopeLabel(vault, b)
+                const perMonth = monthlyEquivalent(b, cm)
                 const breakdown = recTotal ? recurringBreakdown(vault, rec.cadence, cm, rec.excludeCategoryIds, rb) : []
                 return (
                   <div key={b.id}>
                     <BudgetRow
                       cat={b.name ?? (recTotal ? 'Recurring' : grp ? groupTitle(members) : (track?.name ?? cat?.name ?? '—'))}
-                      caption={b.scope ? label : undefined}
+                      caption={b.scope ? (perMonth != null ? `${label} · ≈ ${fmt(perMonth)}/mo` : label) : undefined}
                       color={recTotal || grp ? 'var(--accent)' : (track?.color ?? cat?.color ?? 'var(--c-other)')}
                       colors={grp ? members.map((m) => m?.color ?? 'var(--c-other)') : undefined}
                       spent={spent}
@@ -377,9 +379,15 @@ export function PlanScreen() {
                       proj={proj}
                       domainMax={domainMax}
                       first={i === 0}
-                      elapsed={monthly ? elapsed : 1}
+                      elapsed={monthly ? elapsed : (yElapsed ?? 1)}
                       covered={monthly ? coveredFrac : undefined}
-                      paceBasis={monthly ? paceBasis : undefined}
+                      paceBasis={
+                        monthly
+                          ? paceBasis
+                          : year != null && yElapsed! > 0 && yElapsed! < 1
+                            ? `${daysBetween(`${year}-01-01`, today) + 1} days of ${year} (calendar)`
+                            : undefined
+                      }
                       onOpen={() => goTxns(budgetDrill(b, cm))}
                       expanded={openB === b.id}
                       onToggle={() => setOpenB((cur) => (cur === b.id ? null : b.id))}
@@ -500,7 +508,9 @@ export function PlanScreen() {
               budgets. Forward stops at the current month: there is no plan for a month that
               has not happened. */}
           <PeriodStepper value={cm} onChange={(v) => setCm(v)} testidPrefix="plan" narrow={narrow} thisMonth={thisMonth} />
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          {/* Actions live behind a hairline so the stepper (with its "↩ today" chip) reads as
+              one control and these as another. Bulk "from history" is a tab inside + Budget. */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, borderLeft: `1px solid ${HAIR}`, paddingLeft: 14 }}>
             <button onClick={() => setDlg({})} style={addBtn}>+ Budget</button>
             <span style={{ color: HAIR }}>·</span>
             <button onClick={() => setGdlg({})} style={addBtn}>+ Goal</button>
@@ -544,6 +554,20 @@ export function PlanScreen() {
           budget={dlg.id ? vault.budgets.find((b) => b.id === dlg.id) : undefined}
           onClose={() => setDlg(null)}
           onEditOther={(id) => setDlg({ id })}
+          onFromHistory={() => {
+            setDlg(null)
+            setSetup(true)
+          }}
+        />
+      )}
+
+      {setup && (
+        <BudgetSetupDialog
+          onClose={() => setSetup(false)}
+          onOneBudget={() => {
+            setSetup(false)
+            setDlg({})
+          }}
         />
       )}
     </div>

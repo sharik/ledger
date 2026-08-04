@@ -60,3 +60,16 @@ export function yearEndProjection(ytd: number, year: number, today: DateStr): nu
   const elapsed = daysBetween(`${year}-01-01`, today) + 1
   return pace(ytd, elapsed, totalDays)
 }
+
+/**
+ * 0..1 of `year` elapsed at `today` — calendar days, the same elapsed = daysBetween + 1
+ * convention as `yearEndProjection`, so a today-marker and the projection cannot disagree
+ * about how far into the year we are. Past year → 1, future → 0.
+ */
+export function yearElapsedFraction(year: number, today: DateStr): number {
+  const y = Number(today.slice(0, 4))
+  if (y > year) return 1
+  if (y < year) return 0
+  const total = daysBetween(`${year}-01-01`, `${year}-12-31`) + 1
+  return (daysBetween(`${year}-01-01`, today) + 1) / total
+}

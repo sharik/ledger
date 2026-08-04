@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { daysBetween } from '../../src/analytics/selections'
-import { monthEndProjection, monthEndProjectionThrough, pace, yearEndProjection } from '../../src/analytics/project'
+import { monthEndProjection, monthEndProjectionThrough, pace, yearElapsedFraction, yearEndProjection } from '../../src/analytics/project'
 
 const TODAY = '2026-07-12'
 
@@ -53,5 +53,17 @@ describe('pace-based projection (BRIEF §8)', () => {
 
   it('a past year is not projected', () => {
     expect(yearEndProjection(5000, 2025, TODAY)).toBe(5000)
+  })
+
+  it('yearElapsedFraction: past year 1, future year 0, calendar bounds', () => {
+    expect(yearElapsedFraction(2025, TODAY)).toBe(1)
+    expect(yearElapsedFraction(2027, TODAY)).toBe(0)
+    expect(yearElapsedFraction(2026, '2026-01-01')).toBe(1 / 365)
+    expect(yearElapsedFraction(2026, '2026-12-31')).toBe(1)
+  })
+
+  it('yearElapsedFraction agrees with yearEndProjection about elapsed time', () => {
+    // Same daysBetween + 1 convention ⇒ projection = ytd / fraction (past MIN_PACE_DAYS).
+    expect(yearEndProjection(1000, 2026, TODAY)).toBeCloseTo(1000 / yearElapsedFraction(2026, TODAY), 8)
   })
 })

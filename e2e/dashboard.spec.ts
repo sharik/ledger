@@ -460,3 +460,23 @@ test.describe('the dashboard period can be stepped', () => {
     await expect(page.getByTestId('dash-empty-period')).toHaveCount(0)
   })
 })
+
+test.describe('the plan tile keeps each budget\'s identity', () => {
+  // An unnamed group budget rendered under its first member's name and color, so the dashboard
+  // and Plan showed the same budget as two different things.
+  test('an unnamed group budget shows its composite title, as on Plan', async ({ page }) => {
+    await setupVault(page)
+    await goTab(page, 'plan')
+    await page.getByRole('button', { name: '+ Budget' }).click()
+    await page.getByTestId('budget-scope').selectOption('group-m')
+    const opts = page.getByTestId('budget-cat-option')
+    await opts.filter({ hasText: 'Dining out' }).click()
+    await opts.filter({ hasText: 'Entertainment' }).click()
+    await page.getByPlaceholder('Amount').fill('600')
+    await page.getByTestId('budget-save').click()
+    await expect(page.locator('[data-screen="plan"]')).toContainText('Dining out + Entertainment')
+
+    await goTab(page, 'dash')
+    await expect(page.locator('[data-dash-tile="plan"]')).toContainText('Dining out + Entertainment')
+  })
+})

@@ -13,7 +13,9 @@ import {
 } from '../model/selectors'
 import { compare } from '../analytics/compare'
 import { addDays, rebaseSelection } from '../analytics/selections'
-import { MIN_PACE_DAYS, monthEndProjectionThrough, pace, yearEndProjection } from '../analytics/project'
+import { MIN_PACE_DAYS, monthEndProjectionThrough, pace, yearElapsedFraction, yearEndProjection } from '../analytics/project'
+import { budgetScopeLabel, budgetScopeSpent, budgetScopeYear, isMonthlyScope, monthlyEquivalent } from '../analytics/budgets'
+import { budgetCategoryIds } from '../model/types'
 import { DashPeriodProvider, dashPeriodOf } from './dashPeriod'
 import { PeriodStepper, periodLabelOf, readPeriodParam, withGran, type PeriodValue } from './kit/PeriodStepper'
 import { formatHash, parseHash, selectionToParam } from './route'
@@ -30,7 +32,7 @@ import { dayRange, elapsedDays, pctDelta, ptsDelta } from './format'
 import { MetricCell, big } from './kit/metrics'
 import { Tri } from './kit'
 import { goalState, goalStatus } from '../analytics/goals'
-import { GoalRow, BudgetRow } from './kit/rows'
+import { GoalRow, BudgetRow, groupTitle } from './kit/rows'
 import { ScreenIntro } from './ScreenIntro'
 import { StartHere } from './StartHere'
 
@@ -171,9 +173,11 @@ export function DashboardScreen() {
   }, [d, cm])
 
   // --- plan status cell ---
-  // NOTE: this keys `${cm}|${categoryId}` directly, so it counts every budget as monthly.
-  // Plan's `budgetRollup()` holds annual, per-trip and cross-category-recurring budgets out
-  // as memo lines, so the two surfaces can disagree for a vault using scoped budgets.
+  // NOTE: this keys `${cm}|${categoryId}` directly — legacy-monthly arithmetic — so it shows
+  // only legacy monthly budgets. A scoped budget (annual, per-trip, group, recurring) counts a
+  // different period or a different set of rows; drawing it against this month's category spend
+  // rendered an annual €2,400 as blown every month. Plan is the surface that knows how to read
+  // those (rollup memo lines, year pacing); the Dashboard cell shows what it can show honestly.
   //
   // Budgets are monthly amounts, so this stays month-scoped even in year granularity, reading
   // the year's last elapsed month. Rolling twelve monthly budgets into an annual figure is a
@@ -181,6 +185,7 @@ export function DashboardScreen() {
   // answer to it here is how two screens start disagreeing.
   const overPace = useMemo(
     () => vault.budgets
+      .filter((b) => !b.scope)
       .filter((b) => monthEndProjectionThrough(d.spentByCatMonth.get(`${cm}|${b.categoryId}`) ?? 0, cm, through) > b.amount)
       .map((b) => catInfo(b.categoryId).name),
     [vault.budgets, d, cm, through],
@@ -691,29 +696,53 @@ export function DashboardScreen() {
           </span>
         </div>
         {(() => {
-          const rows = vault.budgets.map((b) => {
-            const spent = d.spentByCatMonth.get(`${cm}|${b.categoryId}`) ?? 0
-            return { b, spent, proj: monthEndProjectionThrough(spent, cm, through) }
+          // Every budget draws with ITS period's arithmetic, mirroring Plan: monthly scopes
+          // (legacy, group, recurring) pace against this month via their real scope spend;
+          // year scopes (annual, annual group, yearly recurring) show their year's spend,
+          // a marker at the year's elapsed fraction, a year-end pace and the ≈ €/mo caption —
+          // never against one month's spend, which rendered an annual €2,400 as blown every
+          // month. Only per-trip budgets stay on Plan: their span is not a calendar period.
+          const rows = vault.budgets.flatMap((b) => {
+            if (b.scope?.kind === 'tracking') return []
+            const year = budgetScopeYear(b, cm)
+            const spent = b.scope ? budgetScopeSpent(vault, b, cm, rates) : (d.spentByCatMonth.get(`${cm}|${b.categoryId}`) ?? 0)
+            const proj = isMonthlyScope(b)
+              ? monthEndProjectionThrough(spent, cm, through)
+              : year != null
+                ? yearEndProjection(spent, year, today)
+                : spent
+            return [{ b, year, spent, proj }]
           })
           const domainMax = computeBudgetDomain(rows.map((r) => ({ spent: r.spent, budget: r.b.amount, proj: r.proj })))
-          return rows.map(({ b, spent, proj }, i) => (
-            <BudgetRow
-              key={b.id}
-              cat={catInfo(b.categoryId).name}
-              color={catInfo(b.categoryId).color}
-              spent={spent}
-              budget={b.amount}
-              proj={proj}
-              domainMax={domainMax}
-              done={!!b.fixed}
-              first={i === 0}
-              elapsed={planElapsed}
-              // Same "data through" marker as Plan: the projection is measured over the
-              // imported window, so the bar has to show where that window stops.
-              covered={through.slice(0, 7) === cm ? Number(through.slice(8, 10)) / daysInMonth(cm) : through > cm ? 1 : 0}
-              canDelete={false}
-            />
-          ))
+          return rows.map(({ b, year, spent, proj }, i) => {
+            const catId = budgetCategoryIds(b)[0]
+            const perMonth = monthlyEquivalent(b, cm)
+            // A group budget keeps the same identity Plan gives it — composite title, accent,
+            // member swatches — not its first member's name and color.
+            const grp = b.scope?.kind === 'group' ? b.scope : undefined
+            const members = grp ? grp.categoryIds.map((id) => catInfo(id)) : []
+            return (
+              <BudgetRow
+                key={b.id}
+                cat={b.name ?? (grp ? groupTitle(members) : catId ? catInfo(catId).name : 'Recurring')}
+                caption={b.scope ? `${budgetScopeLabel(vault, b)}${perMonth != null ? ` · ≈ ${fmt(perMonth)}/mo` : ''}` : undefined}
+                color={grp || !catId ? 'var(--accent)' : catInfo(catId).color}
+                colors={grp ? members.map((m) => m.color) : undefined}
+                spent={spent}
+                budget={b.amount}
+                proj={proj}
+                domainMax={domainMax}
+                done={!!b.fixed}
+                first={i === 0}
+                elapsed={year != null ? yearElapsedFraction(year, today) : planElapsed}
+                // Same "data through" marker as Plan: the monthly projection is measured over
+                // the imported window, so the bar shows where that window stops. A year row
+                // paces by calendar instead, so it carries no coverage marker (as on Plan).
+                covered={year != null ? undefined : through.slice(0, 7) === cm ? Number(through.slice(8, 10)) / daysInMonth(cm) : through > cm ? 1 : 0}
+                canDelete={false}
+              />
+            )
+          })
         })()}
       </section>
     </>
