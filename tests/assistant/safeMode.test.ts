@@ -254,24 +254,37 @@ describe('plan changes in safe mode (§5.0)', () => {
     expect(queued[0]!.summary).toContain('400')
   })
 
-  it('a trailing average is refused, because working one out means reading real spending', () => {
-    const { vault, dining } = fixture()
+  it('a trailing average resolves in safe mode: the figure lands on the CARD and is redacted from the RESULT', () => {
+    const { vault } = fixture()
+    // One complete recent month of Groceries so there is something to average — a distinctive
+    // figure, so finding it anywhere in the tool result is unambiguously a leak.
+    txn(vault, '2026-06-10', 'Supermarket', 'Groceries', -271)
+    const args = { action: 'create', target: 'budget', categoryIds: [catId(vault, 'Groceries')], amount: 'trailing-3' }
     const { ctx, queued } = proposingCtx(vault)
-    for (const amount of ['trailing-3', 'trailing-6']) {
-      const r = execTool(ctx, 'propose_plan', { action: 'create', target: 'budget', categoryIds: [dining], amount })
-      expect(r.error, amount).toBe(true)
-      expect(JSON.parse(r.content).error, amount).toMatch(/safe mode withholds/)
-    }
-    expect(queued).toHaveLength(0)
-    // Under full access the same call gets PAST the gate and into the arithmetic, which is what
-    // proves the gate is what stopped it. This fixture has no recent months to average, so the
-    // honest answer there is "not enough history" rather than a figure.
+    const r = execTool(ctx, 'propose_plan', args)
+    expect(r.error).toBeUndefined()
+    // The card (queued proposal) carries the resolved figure — read on this device before Apply.
+    expect(queued).toHaveLength(1)
+    expect(queued[0]!.summary).toContain('271')
+    // The tool result — what travels back to the model — does not.
+    const content = JSON.parse(r.content)
+    expect(content.amount).toBeUndefined()
+    expect(content.note).toMatch(/approval card/)
+    expect(r.content).not.toContain('271')
+    // Under full access the same call returns the figure openly.
     const full = proposingCtx(vault, 'full')
-    const err = JSON.parse(
-      execTool(full.ctx, 'propose_plan', { action: 'create', target: 'budget', categoryIds: [dining], amount: 'trailing-3' }).content,
-    ).error
-    expect(err).toMatch(/Not enough history/)
-    expect(err).not.toMatch(/safe mode/)
+    expect(JSON.parse(execTool(full.ctx, 'propose_plan', args).content).amount).toBe(271)
+  })
+
+  it('a trailing average with nothing to average still fails honestly in safe mode', () => {
+    const { vault } = fixture()
+    // Health never cost anything in the covered months: the mean is a true €0, and €0 is not a
+    // figure worth proposing — the same rule `scopeTrailingAvg` applies everywhere.
+    const { ctx, queued } = proposingCtx(vault)
+    const r = execTool(ctx, 'propose_plan', { action: 'create', target: 'budget', categoryIds: [catId(vault, 'Health')], amount: 'trailing-6' })
+    expect(r.error).toBe(true)
+    expect(JSON.parse(r.content).error).toMatch(/Not enough history/)
+    expect(queued).toHaveLength(0)
   })
 
   it('the duplicate-budget error withholds the existing amount', () => {
@@ -285,17 +298,16 @@ describe('plan changes in safe mode (§5.0)', () => {
     expect(fullErr.existingAmount).toBe(2750)
   })
 
-  it('the schema does not advertise the trailing average it is about to refuse', () => {
-    // A model that reads "trailing-3", calls it, and gets refused has burned a round on the tool's
-    // own advice. One real conversation did that three times before the safe schema existed.
+  it('the schema advertises the trailing forms in BOTH modes — safe mode redacts the result, not the capability', () => {
+    // The old safe schema stripped "trailing-3" because the executor refused it. The executor now
+    // resolves it and redacts the RESULT instead, so one schema serves both modes and a model in
+    // safe mode can follow the tool's own advice without burning a round.
     const amountDesc = (tool: ToolDef) =>
       (tool.parameters.properties as Record<string, { description: string }>).amount!.description
     const safe = toolsFor('safe').find((t) => t.name === 'propose_plan')!
-    expect(amountDesc(safe)).not.toContain('trailing-3')
-    expect(amountDesc(safe)).toContain('has to come from the user')
-    // Unchanged under full access, and TOOLS itself is never mutated.
     const full = toolsFor('full').find((t) => t.name === 'propose_plan')!
-    expect(amountDesc(full)).toContain('trailing-3')
+    expect(amountDesc(safe)).toContain('trailing-3')
+    expect(safe).toBe(full) // no per-mode fork left
     expect(full).toBe(TOOLS.find((t) => t.name === 'propose_plan'))
   })
 
@@ -396,5 +408,22 @@ describe('the assistant’s own provider and model (§2.1)', () => {
     const withKey = { ...base, apiKey: 'sk-local-secret' }
     const r = chatAssist({ ...withKey, chatProvider: 'openai', chatModel: 'gpt-5' })
     expect(r.apiKey).toBe('')
+  })
+})
+
+describe('spending_cadence in safe mode', () => {
+  it('returns the rhythm — cadence, counts, periods — and not one figure', () => {
+    const { vault } = fixture()
+    const r = JSON.parse(execTool(ctxOf(vault), 'spending_cadence', {}).content)
+    expect(r.access).toBe('safe')
+    expect(r.categories.length).toBeGreaterThan(0)
+    for (const row of r.categories) {
+      expect(row).toHaveProperty('cadence')
+      expect(row).toHaveProperty('suggestedPeriod')
+      expect(row).toHaveProperty('budgetedPeriods')
+      expect(row.typicalMonthly).toBeUndefined()
+      expect(row.suggestedNativeTotal).toBeUndefined()
+      expect(row.medianMonth).toBeUndefined()
+    }
   })
 })

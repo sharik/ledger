@@ -127,16 +127,17 @@ export const EXPLAIN = {
     hint: 'Budgets running over pace, and goals with no date they would reach their target.',
     what: 'A two-line read on the plan you set: budgets first, then goals.',
     how:
-      'A budget is "over pace" when its spend so far, extrapolated at the current daily rate to ' +
-      'the end of the month, would land above its amount — not when it has already been passed. ' +
-      'That rate divides by the days your imported statements cover, not by the days of the month ' +
-      'that have passed, so a gap in your imports cannot make a budget look comfortable. ' +
-      'A goal is "behind" when its contributions or balance trajectory produce no date that ' +
-      'reaches the target at all.',
+      'Each budget is checked inside its own period — month, quarter, half-year or calendar ' +
+      'year — and is "over pace" when its spend so far, extrapolated at the current daily rate ' +
+      'to the end of that period, would land above its amount — not when it has already been ' +
+      'passed. A monthly rate divides by the days your imported statements cover, not by the ' +
+      'days of the month that have passed, so a gap in your imports cannot make a budget look ' +
+      'comfortable; coarser periods pace by the calendar. A goal is "behind" when its ' +
+      'contributions or balance trajectory produce no date that reaches the target at all.',
     excludes: [
       'Budgets and goals you have not set up — an empty plan says so, rather than reporting that it is being met',
       'Archived goals',
-      'Annual, per-trip and recurring-scoped budgets are counted here as if monthly; the Plan screen holds them out of its roll-up instead',
+      'Per-trip budgets — a trip\'s span is not a calendar period; the summary names how many were not checked',
     ],
     next: [{ label: 'Open Plan', tab: 'plan' }],
     q: [115, 116, 118, 190],

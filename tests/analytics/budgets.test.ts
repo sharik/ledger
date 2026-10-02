@@ -3,13 +3,17 @@ import { setFixedNow, uuidv7, now } from '../../src/model/clock'
 import { acc, buildVault, catId, txn } from '../helpers/build'
 import type { Tracking, Vault } from '../../src/model/types'
 import {
+  budgetAmountAt,
+  budgetNativePeriod,
   budgetPeriodHistory,
   budgetRollup,
   budgetScopeLabel,
   budgetScopeSpent,
   budgetScopeTxns,
-  budgetScopeYear,
+  budgetSpentAt,
   monthlyEquivalent,
+  periodKeyBounds,
+  periodWindow,
   recurringBreakdown,
   scopeTrailingAvg,
 } from '../../src/analytics/budgets'
@@ -34,15 +38,29 @@ describe('budgetScopeSpent', () => {
     expect(budgetScopeLabel(v, b)).toBe('monthly')
   })
 
-  it('category-year scope: a full calendar year of a category', () => {
+  it('category-period year scope: the calendar year containing the viewed month, evergreen', () => {
     const v = buildVault()
     txn(v, '2026-02-01', 'A', 'Shopping', -100)
     txn(v, '2026-11-01', 'B', 'Shopping', -200)
     txn(v, '2025-11-01', 'C', 'Shopping', -999) // other year
     const gid = catId(v, 'Shopping')
-    const b = { id: 'b', updatedAt: now(), categoryId: gid, amount: 4000, scope: { kind: 'category-year' as const, categoryId: gid, year: 2026 } }
+    const b = { id: 'b', updatedAt: now(), categoryId: gid, amount: 4000, scope: { kind: 'category-period' as const, categoryId: gid, period: 'year' as const } }
     expect(budgetScopeSpent(v, b, '2026-07')).toBe(300)
-    expect(budgetScopeLabel(v, b)).toBe('2026 · annual')
+    // Evergreen: the SAME budget viewed inside 2025 measures 2025.
+    expect(budgetScopeSpent(v, b, '2025-07')).toBe(999)
+    expect(budgetScopeLabel(v, b)).toBe('annual')
+  })
+
+  it('category-period quarter scope: the calendar quarter containing the viewed month', () => {
+    const v = buildVault()
+    txn(v, '2026-07-05', 'A', 'Shopping', -100) // Q3
+    txn(v, '2026-09-20', 'B', 'Shopping', -50) // Q3
+    txn(v, '2026-06-30', 'C', 'Shopping', -999) // Q2
+    const gid = catId(v, 'Shopping')
+    const b = { id: 'b', updatedAt: now(), categoryId: gid, amount: 350, scope: { kind: 'category-period' as const, categoryId: gid, period: 'quarter' as const } }
+    expect(budgetScopeSpent(v, b, '2026-08')).toBe(150) // any month of Q3 reads the quarter
+    expect(budgetScopeSpent(v, b, '2026-04')).toBe(999) // Q2
+    expect(budgetScopeLabel(v, b)).toBe('quarterly')
   })
 
   it('tracking scope: lifetime spend of the members', () => {
@@ -76,8 +94,8 @@ describe('budgetScopeSpent', () => {
 
     // legacy monthly
     expect(budgetScopeSpent(vv, { id: 'b', updatedAt: now(), categoryId: gro, amount: 200 }, '2026-07')).toBe(50)
-    // category-year
-    expect(budgetScopeSpent(vv, { id: 'b', updatedAt: now(), categoryId: shop, amount: 4000, scope: { kind: 'category-year', categoryId: shop, year: 2026 } }, '2026-07')).toBe(300)
+    // category-period (year)
+    expect(budgetScopeSpent(vv, { id: 'b', updatedAt: now(), categoryId: shop, amount: 4000, scope: { kind: 'category-period', categoryId: shop, period: 'year' } }, '2026-07')).toBe(300)
     // tracking — the sharp one: the assignment record survives, but members() goes inert
     expect(budgetScopeSpent(vv, { id: 'b', updatedAt: now(), categoryId: 'cat-transfers', amount: 1500, scope: { kind: 'tracking', trackingId: t.id } }, '2026-07')).toBe(300)
     // recurring
@@ -105,6 +123,14 @@ describe('budgetScopeSpent', () => {
       { categoryId: catId(v, 'Utilities'), spent: 30 },
       { categoryId: catId(v, 'Entertainment'), spent: 14 },
     ])
+    // At a coarser viewing horizon the breakdown spans the same window as the row's bar (Q3 =
+    // Jul–Sep): August joins, June stays out. The month view is unchanged.
+    rec(txn(v, '2026-08-02', 'Netflix', 'Entertainment', -14), 'monthly')
+    expect(recurringBreakdown(v, 'monthly', '2026-07', [housing])).toEqual(rows)
+    expect(recurringBreakdown(v, 'monthly', '2026-07', [housing], undefined, 'quarter')).toEqual([
+      { categoryId: catId(v, 'Utilities'), spent: 30 },
+      { categoryId: catId(v, 'Entertainment'), spent: 28 },
+    ])
   })
 
   // #12c: a recurring scope with a categoryId targets that one category's recurring spend.
@@ -120,13 +146,13 @@ describe('budgetScopeSpent', () => {
     expect(budgetScopeSpent(v, b, '2026-07')).toBe(25) // 14 + 11 only
   })
 
-  it('a refund nets the budget spend; legacy and category-year agree, and both floor at 0', () => {
+  it('a refund nets the budget spend; legacy and category-period agree, and both floor at 0', () => {
     const v = buildVault()
     txn(v, '2026-03-04', 'Doctor', 'Health', -120)
     txn(v, '2026-03-20', 'Reimbursement', 'Health', 74.59) // refund, same month/year
     const gid = catId(v, 'Health')
     const legacy = { id: 'l', updatedAt: now(), categoryId: gid, amount: 200 }
-    const yearly = { id: 'y', updatedAt: now(), categoryId: gid, amount: 2000, scope: { kind: 'category-year' as const, categoryId: gid, year: 2026 } }
+    const yearly = { id: 'y', updatedAt: now(), categoryId: gid, amount: 2000, scope: { kind: 'category-period' as const, categoryId: gid, period: 'year' as const } }
     expect(budgetScopeSpent(v, legacy, '2026-03')).toBeCloseTo(45.41, 2)
     expect(budgetScopeSpent(v, yearly, '2026-03')).toBeCloseTo(45.41, 2) // same netted total → readouts agree
 
@@ -148,17 +174,18 @@ describe('budgetScopeSpent', () => {
     expect(budgetScopeLabel(v, b)).toBe('monthly · 2 categories')
   })
 
-  it('group scope with a year: the whole calendar year of the members', () => {
+  it('group scope with a period: the calendar year of the members, evergreen', () => {
     const v = buildVault()
     txn(v, '2026-02-01', 'Bistro', 'Dining out', -40)
     txn(v, '2026-11-01', 'Cinema', 'Entertainment', -25)
     txn(v, '2025-11-01', 'Cinema', 'Entertainment', -999) // other year
     const b = {
       id: 'b', updatedAt: now(), categoryId: 'cat-transfers', amount: 2400, name: 'Fun',
-      scope: { kind: 'group' as const, categoryIds: [catId(v, 'Dining out'), catId(v, 'Entertainment')], year: 2026 },
+      scope: { kind: 'group' as const, categoryIds: [catId(v, 'Dining out'), catId(v, 'Entertainment')], period: 'year' as const },
     }
     expect(budgetScopeSpent(v, b, '2026-07')).toBe(65)
-    expect(budgetScopeLabel(v, b)).toBe('2026 · annual · 2 categories')
+    expect(budgetScopeSpent(v, b, '2025-07')).toBe(999) // evergreen: 2025's window
+    expect(budgetScopeLabel(v, b)).toBe('annual · 2 categories')
   })
 
   it('a group nets refunds across the whole group and floors once, not per category', () => {
@@ -211,7 +238,7 @@ describe('budgetScopeTxns', () => {
 
     const budgets = [
       { id: '1', updatedAt: now(), categoryId: gro, amount: 200 },
-      { id: '2', updatedAt: now(), categoryId: gro, amount: 200, scope: { kind: 'category-year' as const, categoryId: gro, year: 2026 } },
+      { id: '2', updatedAt: now(), categoryId: gro, amount: 200, scope: { kind: 'category-period' as const, categoryId: gro, period: 'year' as const } },
       { id: '3', updatedAt: now(), categoryId: 'cat-transfers', amount: 70, scope: { kind: 'recurring' as const, cadence: 'monthly' as const } },
       { id: '4', updatedAt: now(), categoryId: ent, amount: 70, scope: { kind: 'recurring' as const, cadence: 'monthly' as const, categoryId: ent } },
       { id: '5', updatedAt: now(), categoryId: 'cat-transfers', amount: 900, scope: { kind: 'tracking' as const, trackingId: t.id } },
@@ -242,19 +269,30 @@ describe('budgetPeriodHistory', () => {
     txn(v, '2025-04-03', 'A', 'Shopping', -300)
     txn(v, '2026-04-03', 'B', 'Shopping', -400)
     const gid = catId(v, 'Shopping')
-    const b = { id: 'b', updatedAt: now(), categoryId: gid, amount: 4000, scope: { kind: 'category-year' as const, categoryId: gid, year: 2026 } }
+    const b = { id: 'b', updatedAt: now(), categoryId: gid, amount: 4000, scope: { kind: 'category-period' as const, categoryId: gid, period: 'year' as const } }
     expect(budgetPeriodHistory(v, b, '2026-07', 2).map((p) => [p.key, p.spent])).toEqual([['2025', 300], ['2026', 400]])
   })
 
-  it('shifts a group-with-year across years too', () => {
+  it('walks a group-with-period across years too', () => {
     const v = buildVault()
     txn(v, '2025-04-03', 'A', 'Dining out', -300)
     txn(v, '2026-04-03', 'B', 'Entertainment', -400)
     const b = {
       id: 'b', updatedAt: now(), categoryId: 'cat-transfers', amount: 4000,
-      scope: { kind: 'group' as const, categoryIds: [catId(v, 'Dining out'), catId(v, 'Entertainment')], year: 2026 },
+      scope: { kind: 'group' as const, categoryIds: [catId(v, 'Dining out'), catId(v, 'Entertainment')], period: 'year' as const },
     }
     expect(budgetPeriodHistory(v, b, '2026-07', 2).map((p) => [p.key, p.spent])).toEqual([['2025', 300], ['2026', 400]])
+  })
+
+  it('returns one entry per QUARTER for a quarterly scope, keyed for the drill', () => {
+    const v = buildVault()
+    txn(v, '2026-02-10', 'A', 'Shopping', -120) // Q1
+    txn(v, '2026-05-10', 'B', 'Shopping', -80) // Q2
+    const gid = catId(v, 'Shopping')
+    const b = { id: 'b', updatedAt: now(), categoryId: gid, amount: 150, scope: { kind: 'category-period' as const, categoryId: gid, period: 'quarter' as const } }
+    const h = budgetPeriodHistory(v, b, '2026-07', 3)
+    expect(h.map((p) => [p.key, p.spent])).toEqual([['2026-Q1', 120], ['2026-Q2', 80], ['2026-Q3', 0]])
+    expect(h.map((p) => p.label)).toEqual(['Q1 2026', 'Q2 2026', 'Q3 2026'])
   })
 
   it('a per-trip budget has one lifetime span, so there is no series to draw', () => {
@@ -298,11 +336,15 @@ describe('scopeTrailingAvg', () => {
     expect(scopeTrailingAvg(v, health, 6, '2026-07')).toBeNull()
   })
 
-  it('is null for a scope with no monthly rhythm', () => {
+  it('averages COMPLETE NATIVE WINDOWS for a coarser period, and is null for per-trip', () => {
     const v = buildVault()
-    txn(v, '2026-06-03', 'B', 'Shopping', -200)
+    txn(v, '2026-01-10', 'A', 'Shopping', -120) // Q1 — complete before Q3
+    txn(v, '2026-05-10', 'B', 'Shopping', -80) // Q2 — complete before Q3
     const gid = catId(v, 'Shopping')
-    const annual = { id: 'b', updatedAt: now(), categoryId: gid, amount: 4000, scope: { kind: 'category-year' as const, categoryId: gid, year: 2026 } }
+    const quarterly = { id: 'b', updatedAt: now(), categoryId: gid, amount: 150, scope: { kind: 'category-period' as const, categoryId: gid, period: 'quarter' as const } }
+    expect(scopeTrailingAvg(v, quarterly, 3, '2026-07')).toBe(100) // mean of Q1 (120) and Q2 (80)
+    // An annual scope with data only inside the CURRENT year has no complete prior year to average.
+    const annual = { id: 'y', updatedAt: now(), categoryId: gid, amount: 4000, scope: { kind: 'category-period' as const, categoryId: gid, period: 'year' as const } }
     expect(scopeTrailingAvg(v, annual, 6, '2026-07')).toBeNull()
     const trip1 = trip(v, 'Poland', '2026-06-01', '2026-06-10')
     const perTrip = { id: 'c', updatedAt: now(), categoryId: 'cat-transfers', amount: 900, scope: { kind: 'tracking' as const, trackingId: trip1.id } }
@@ -353,31 +395,63 @@ describe('multi-currency (FX chain, not 1:1)', () => {
     txn(v, '2026-07-05', 'Carrefour', 'Groceries', -40)
     withRate(v)
     v.budgets.push({ id: 'b', updatedAt: now(), categoryId: catId(v, 'Groceries'), amount: 400 })
-    const roll = budgetRollup(v, '2026-07', (s) => s)
+    const roll = budgetRollup(v, '2026-07', 'month', (s) => s)
     expect(roll.totalSpent).toBe(62) // 1000 × 0.022 + 40
   })
 })
 
-describe('budgetScopeYear · monthlyEquivalent', () => {
+describe('periodWindow · periodKeyBounds', () => {
+  it('windows are calendar-aligned with inclusive day bounds', () => {
+    expect(periodWindow('month', '2026-07')).toMatchObject({ fromMk: '2026-07', toMk: '2026-07', from: '2026-07-01', to: '2026-07-31', key: '2026-07' })
+    expect(periodWindow('quarter', '2026-08')).toMatchObject({ fromMk: '2026-07', toMk: '2026-09', from: '2026-07-01', to: '2026-09-30', key: '2026-Q3', label: 'Q3 2026' })
+    expect(periodWindow('half', '2026-06')).toMatchObject({ fromMk: '2026-01', toMk: '2026-06', from: '2026-01-01', to: '2026-06-30', key: '2026-H1', label: 'H1 2026' })
+    expect(periodWindow('half', '2026-07')).toMatchObject({ fromMk: '2026-07', toMk: '2026-12', key: '2026-H2' })
+    expect(periodWindow('year', '2026-07')).toMatchObject({ fromMk: '2026-01', toMk: '2026-12', from: '2026-01-01', to: '2026-12-31', key: '2026', label: '2026' })
+    // Leap February closes on the 29th.
+    expect(periodWindow('month', '2024-02').to).toBe('2024-02-29')
+  })
+
+  it('periodKeyBounds inverts every key shape', () => {
+    expect(periodKeyBounds('2026-07')).toEqual({ from: '2026-07-01', to: '2026-07-31' })
+    expect(periodKeyBounds('2026-Q3')).toEqual({ from: '2026-07-01', to: '2026-09-30' })
+    expect(periodKeyBounds('2026-H2')).toEqual({ from: '2026-07-01', to: '2026-12-31' })
+    expect(periodKeyBounds('2026')).toEqual({ from: '2026-01-01', to: '2026-12-31' })
+  })
+})
+
+describe('budgetNativePeriod · budgetSpentAt · budgetAmountAt · monthlyEquivalent', () => {
   const base = { id: 'b', updatedAt: '', categoryId: 'cat-groceries', amount: 2400 }
 
-  it('year-windowed scopes carry their year; recurring-yearly follows the viewed month', () => {
-    expect(budgetScopeYear({ ...base, scope: { kind: 'category-year', categoryId: 'cat-groceries', year: 2026 } }, '2027-03')).toBe(2026)
-    expect(budgetScopeYear({ ...base, scope: { kind: 'group', categoryIds: ['a', 'b'], year: 2025 } }, '2026-07')).toBe(2025)
-    expect(budgetScopeYear({ ...base, scope: { kind: 'recurring', cadence: 'yearly' } }, '2026-07')).toBe(2026)
+  it('native period per scope; tracking has none', () => {
+    expect(budgetNativePeriod(base)).toBe('month')
+    expect(budgetNativePeriod({ ...base, scope: { kind: 'category-period', categoryId: 'x', period: 'quarter' } })).toBe('quarter')
+    expect(budgetNativePeriod({ ...base, scope: { kind: 'group', categoryIds: ['a'], period: 'half' } })).toBe('half')
+    expect(budgetNativePeriod({ ...base, scope: { kind: 'group', categoryIds: ['a'] } })).toBe('month')
+    expect(budgetNativePeriod({ ...base, scope: { kind: 'recurring', cadence: 'yearly' } })).toBe('year')
+    expect(budgetNativePeriod({ ...base, scope: { kind: 'recurring', cadence: 'monthly' } })).toBe('month')
+    expect(budgetNativePeriod({ ...base, scope: { kind: 'tracking', trackingId: 't' } })).toBeNull()
   })
 
-  it('month-windowed and tracking scopes have no year', () => {
-    expect(budgetScopeYear(base, '2026-07')).toBeNull() // legacy monthly
-    expect(budgetScopeYear({ ...base, scope: { kind: 'group', categoryIds: ['a', 'b'] } }, '2026-07')).toBeNull()
-    expect(budgetScopeYear({ ...base, scope: { kind: 'recurring', cadence: 'monthly' } }, '2026-07')).toBeNull()
-    expect(budgetScopeYear({ ...base, scope: { kind: 'tracking', trackingId: 't' } }, '2026-07')).toBeNull()
+  it('a monthly budget reads at a coarser horizon: spend summed, amount scaled', () => {
+    const v = buildVault()
+    txn(v, '2026-07-03', 'A', 'Groceries', -50)
+    txn(v, '2026-08-10', 'B', 'Groceries', -30)
+    txn(v, '2026-06-30', 'C', 'Groceries', -999) // Q2 — outside Q3
+    const b = { id: 'b', updatedAt: now(), categoryId: catId(v, 'Groceries'), amount: 400 }
+    expect(budgetSpentAt(v, b, 'quarter', '2026-07')).toBe(80)
+    expect(budgetAmountAt(b, 'quarter')).toBe(1200)
+    expect(budgetAmountAt(b, 'year')).toBe(4800)
+    // At its own native horizon nothing changes.
+    expect(budgetSpentAt(v, b, 'month', '2026-07')).toBe(50)
+    expect(budgetAmountAt(b, 'month')).toBe(400)
   })
 
-  it('monthlyEquivalent is amount/12 for year scopes, null otherwise or at €0', () => {
-    const annual = { ...base, scope: { kind: 'category-year' as const, categoryId: 'cat-groceries', year: 2026 } }
-    expect(monthlyEquivalent(annual, '2026-07')).toBe(200)
-    expect(monthlyEquivalent({ ...annual, amount: 0 }, '2026-07')).toBeNull()
-    expect(monthlyEquivalent(base, '2026-07')).toBeNull()
+  it('monthlyEquivalent is amount/months-of-period for coarser natives, null otherwise or at €0', () => {
+    const annual = { ...base, scope: { kind: 'category-period' as const, categoryId: 'cat-groceries', period: 'year' as const } }
+    expect(monthlyEquivalent(annual)).toBe(200)
+    const quarterly = { ...base, amount: 300, scope: { kind: 'category-period' as const, categoryId: 'cat-groceries', period: 'quarter' as const } }
+    expect(monthlyEquivalent(quarterly)).toBe(100)
+    expect(monthlyEquivalent({ ...annual, amount: 0 })).toBeNull()
+    expect(monthlyEquivalent(base)).toBeNull()
   })
 })

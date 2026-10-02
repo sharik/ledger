@@ -26,8 +26,9 @@ export interface DashPeriod {
   gran: Gran
   /**
    * The month the screen reads. In year granularity this is the year's last elapsed month, so the
-   * month-keyed tiles (budgets, the ">130% of last month" insights) still have a month to stand on
-   * rather than silently reporting December of a year that is half over.
+   * month-anchored tiles (budgets — each windowed to its own native period containing this month —
+   * and the ">130% of last month" insights) still have a month to stand on rather than silently
+   * reporting December of a year that is half over.
    */
   anchorMonth: MonthKey
   anchorYear: number

@@ -1,5 +1,6 @@
 import type { DateStr, MonthKey } from '../model/types'
 import { daysBetween } from './selections'
+import { periodWindow, type BudgetPeriod } from './budgets'
 
 /**
  * Below this many elapsed days a pace extrapolation is noise (one rent charge on
@@ -46,30 +47,50 @@ export function monthEndProjection(spentSoFar: number, mk: MonthKey, today: Date
  * imported — in which case this reduces exactly to `monthEndProjection`.
  */
 export function monthEndProjectionThrough(spentSoFar: number, mk: MonthKey, through: DateStr): number {
-  // Coverage past this month ⇒ the month is complete; coverage before it ⇒ no data in this
-  // month to extrapolate from. Either way the partial total is the honest answer.
-  if (through.slice(0, 7) !== mk) return spentSoFar
-  return pace(spentSoFar, Number(through.slice(8, 10)), daysInMonth(mk))
+  return periodEndProjectionThrough(spentSoFar, 'month', mk, through)
+}
+
+/**
+ * Pace projection over any budget period's calendar window (the one containing `mk`), from the
+ * window the DATA covers: `through` inside the window ⇒ extrapolate from its elapsed days;
+ * before or past it ⇒ the partial total is the honest answer. Reduces exactly to
+ * `monthEndProjectionThrough` / `yearEndProjection` for their periods — they delegate here,
+ * so the two generations of call sites cannot disagree.
+ */
+export function periodEndProjectionThrough(
+  spentSoFar: number,
+  period: BudgetPeriod,
+  mk: MonthKey,
+  through: DateStr,
+): number {
+  const w = periodWindow(period, mk)
+  if (through < w.from || through > w.to) return spentSoFar
+  return pace(spentSoFar, daysBetween(w.from, through) + 1, daysBetween(w.from, w.to) + 1)
+}
+
+/** Period-end projection at the current pace, elapsed measured to `today` (calendar). */
+export function periodEndProjection(spent: number, period: BudgetPeriod, mk: MonthKey, today: DateStr): number {
+  return periodEndProjectionThrough(spent, period, mk, today)
 }
 
 /** Year-end projection of a year-to-date total at the current pace. */
 export function yearEndProjection(ytd: number, year: number, today: DateStr): number {
-  const totalDays = daysBetween(`${year}-01-01`, `${year}-12-31`) + 1
-  const inYear = Number(today.slice(0, 4)) === year
-  if (!inYear) return ytd
-  const elapsed = daysBetween(`${year}-01-01`, today) + 1
-  return pace(ytd, elapsed, totalDays)
+  return periodEndProjectionThrough(ytd, 'year', `${year}-01`, today)
 }
 
 /**
- * 0..1 of `year` elapsed at `today` — calendar days, the same elapsed = daysBetween + 1
- * convention as `yearEndProjection`, so a today-marker and the projection cannot disagree
- * about how far into the year we are. Past year → 1, future → 0.
+ * 0..1 of a period's calendar window (the one containing `mk`) elapsed at `today` — calendar
+ * days, the same elapsed = daysBetween + 1 convention as the projections, so a today-marker
+ * and the projection cannot disagree about how far in we are. Past window → 1, future → 0.
  */
+export function periodElapsedFraction(period: BudgetPeriod, mk: MonthKey, today: DateStr): number {
+  const w = periodWindow(period, mk)
+  if (today > w.to) return 1
+  if (today < w.from) return 0
+  return (daysBetween(w.from, today) + 1) / (daysBetween(w.from, w.to) + 1)
+}
+
+/** 0..1 of `year` elapsed at `today` — delegates to `periodElapsedFraction`. */
 export function yearElapsedFraction(year: number, today: DateStr): number {
-  const y = Number(today.slice(0, 4))
-  if (y > year) return 1
-  if (y < year) return 0
-  const total = daysBetween(`${year}-01-01`, `${year}-12-31`) + 1
-  return (daysBetween(`${year}-01-01`, today) + 1) / total
+  return periodElapsedFraction('year', `${year}-01`, today)
 }

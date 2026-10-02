@@ -3,8 +3,6 @@ import { isNewer, setFixedNow } from '../src/model/clock'
 import {
   addMonths,
   avgMonthlyExpenses,
-  budgetPace,
-  budgetSpent,
   currentMonthKey,
   derive,
   dti,
@@ -26,6 +24,7 @@ import {
   visibleVault,
 } from '../src/model/selectors'
 import { CAT_TRANSFERS } from '../src/model/types'
+import { budgetScopeSpent } from '../src/analytics/budgets'
 import { acc, budget, buildVault, catId, goal, snap, txn } from './helpers/build'
 
 // At module scope, not in `beforeAll`: several describes below call `derive()` in their body,
@@ -76,7 +75,7 @@ describe('isCashflow: transfers excluded from flows', () => {
   })
 })
 
-describe('budget spend derivation', () => {
+describe('budget spend derivation (scope-aware engine — the legacy selectors are gone)', () => {
   const v = buildVault((v) => {
     txn(v, '2026-07-02', 'A', 'Groceries', -30)
     txn(v, '2026-07-05', 'B', 'Groceries', -20.5)
@@ -85,19 +84,11 @@ describe('budget spend derivation', () => {
     txn(v, '2026-07-01', 'Pay', 'Income', 1000) // income ignored
   })
   const b = budget(v, 'Groceries', 100)
-  const d = derive(v)
 
   it('sums only the month+category expenses', () => {
-    expect(budgetSpent(d, b, '2026-07')).toBe(50.5)
-    expect(budgetSpent(d, b, '2026-06')).toBe(99)
-    expect(budgetSpent(d, b, '2026-05')).toBe(0)
-  })
-
-  it('pace compares spend against elapsed fraction of the month', () => {
-    // day 9 of 31 → elapsed 29.03%; spent 50.5 of 100 → pace ≈ 1.74
-    expect(budgetPace(d, b, '2026-07')).toBeCloseTo(50.5 / (100 * (9 / 31)), 5)
-    // past month: full-month basis
-    expect(budgetPace(d, b, '2026-06')).toBeCloseTo(0.99, 5)
+    expect(budgetScopeSpent(v, b, '2026-07')).toBe(50.5)
+    expect(budgetScopeSpent(v, b, '2026-06')).toBe(99)
+    expect(budgetScopeSpent(v, b, '2026-05')).toBe(0)
   })
 })
 
@@ -111,7 +102,7 @@ describe('refunds net their category, never income (Income/Refund/Transfer)', ()
     const d = derive(v)
     expect(flowOf(d, '2026-07').income).toBe(1000) // refund is NOT income
     expect(flowOf(d, '2026-07').expense).toBeCloseTo(45.41, 2) // 120 spend netted by 74.59 refund
-    expect(budgetSpent(d, budget(v, 'Health', 200), '2026-07')).toBeCloseTo(45.41, 2)
+    expect(budgetScopeSpent(v, budget(v, 'Health', 200), '2026-07')).toBeCloseTo(45.41, 2)
   })
 
   it('a refund exceeding the category spend floors at €0 and stays out of income', () => {
@@ -120,7 +111,7 @@ describe('refunds net their category, never income (Income/Refund/Transfer)', ()
       txn(v, '2026-07-10', 'Big refund', 'Health', 200)
     })
     const d = derive(v)
-    expect(budgetSpent(d, budget(v, 'Health', 100), '2026-07')).toBe(0)
+    expect(budgetScopeSpent(v, budget(v, 'Health', 100), '2026-07')).toBe(0)
     expect(flowOf(d, '2026-07').income).toBe(0)
   })
 })

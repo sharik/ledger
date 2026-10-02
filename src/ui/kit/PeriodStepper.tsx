@@ -92,6 +92,10 @@ export function PeriodStepper({
   testidPrefix,
   narrow = false,
   thisMonth = currentMonthKey(),
+  stepMonths = 1,
+  labelOf,
+  atCurrent,
+  unit: unitProp,
 }: {
   value: PeriodValue
   onChange: (v: PeriodValue) => void
@@ -100,16 +104,25 @@ export function PeriodStepper({
   testidPrefix: string
   narrow?: boolean
   thisMonth?: MonthKey
+  /** Months per step for a month-shaped value — Plan's horizon view steps by 3/6/12. */
+  stepMonths?: number
+  /** Override the label ('Q3 2026') when the value anchors a wider window than itself. */
+  labelOf?: (v: PeriodValue) => string
+  /** Override "is this the current period" when the value is an anchor inside a wider window. */
+  atCurrent?: boolean
+  /** The unit named in tooltips — 'quarter', 'half-year' — when a step is not one month. */
+  unit?: string
 }) {
   const gran = granOf(value)
-  const isCurrent = value === currentPeriod(gran, thisMonth)
-  const unit = gran === 'year' ? 'year' : 'month'
+  const isCurrent = atCurrent ?? value === currentPeriod(gran, thisMonth)
+  const unit = unitProp ?? (gran === 'year' ? 'year' : 'month')
+  const step = gran === 'month' ? stepMonths : 1
 
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
       <button
         data-testid={`${testidPrefix}-prev-month`}
-        onClick={() => onChange(stepPeriod(value, -1))}
+        onClick={() => onChange(stepPeriod(value, -step))}
         title={`Previous ${unit}`}
         aria-label={`Previous ${unit}`}
         style={stepBtn}
@@ -119,11 +132,11 @@ export function PeriodStepper({
       {/* Fixed width, centred: the label grows by a year when you step out of this one, and
           arrows that shuffle sideways as you use them are hard to click twice. */}
       <div data-testid={`${testidPrefix}-month`} style={{ fontSize: 15, fontWeight: 600, color: INK, minWidth: narrow ? 0 : 112, textAlign: 'center' }}>
-        {periodLabelOf(value, thisMonth)}
+        {labelOf ? labelOf(value) : periodLabelOf(value, thisMonth)}
       </div>
       <button
         data-testid={`${testidPrefix}-next-month`}
-        onClick={() => onChange(stepPeriod(value, 1))}
+        onClick={() => onChange(stepPeriod(value, step))}
         disabled={isCurrent}
         title={isCurrent ? `This is the current ${unit}` : `Next ${unit}`}
         aria-label={`Next ${unit}`}

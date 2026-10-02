@@ -1,6 +1,6 @@
 import { argon2id } from 'hash-wasm'
 import type { Budget, Category, CollectionName, Tombstone, Vault } from '../model/types'
-import { CAT_TRANSFERS, SCHEMA_VERSION } from '../model/types'
+import { CAT_TRANSFERS, SCHEMA_VERSION, budgetKey } from '../model/types'
 import { SEED_CATEGORIES } from '../model/categories'
 
 const MAGIC = new TextEncoder().encode('LGR1')
@@ -214,9 +214,11 @@ function migrateV3toV4(v: Vault): Vault {
     let next = b
     const to = remap.get(b.categoryId)
     if (to) next = { ...next, categoryId: to, updatedAt: ts }
-    if (next.scope?.kind === 'category-year') {
-      const sto = remap.get(next.scope.categoryId)
-      if (sto) next = { ...next, updatedAt: ts, scope: { ...next.scope, categoryId: sto } }
+    // v3-era scope shape — `category-year` left the union in schema 8; 7 → 8 converts it later.
+    const legacy = next.scope as undefined | { kind: string; categoryId: string }
+    if (legacy?.kind === 'category-year') {
+      const sto = remap.get(legacy.categoryId)
+      if (sto) next = { ...next, updatedAt: ts, scope: { ...legacy, categoryId: sto } as Budget['scope'] }
     }
     return next
   })
@@ -231,6 +233,60 @@ function migrateV3toV4(v: Vault): Vault {
   }
 
   return { ...v, schema: 4, categories: finalCategories, transactions, budgets, rules, tombstones }
+}
+
+/**
+ * 7 → 8: evergreen budget periods (ANALYTICS §6.2). `category-year {categoryId, year}` becomes
+ * `category-period {categoryId, period: 'year'}` and `group.year` becomes `group.period: 'year'`.
+ * The pinned year is dropped: a budget that used to die on Jan 1 now applies to every calendar
+ * year until changed — a deliberate semantics change. Where the new key collides (two pinned
+ * years on one category, or on one group set), the HIGHEST year — the user's latest intent —
+ * survives and the rest tombstone. Decided here rather than left to `postPassBudgets` so the
+ * choice is year-aware and deterministic (Convention #4), not `updatedAt`-ordered. Surviving
+ * records keep their own `updatedAt`: both devices migrate identically, so field-LWW sees
+ * equal values and no conflict.
+ *
+ * Like 5 → 6, the version bump itself is a guard: a schema-7 peer must not merge these
+ * records — its `budgetKey` has no `category-period` arm, and the dup post-pass would answer
+ * the fall-through collision with a tombstone that syncs back. Read-only (§6.3) beats losing
+ * a live budget.
+ */
+function migrateV7toV8(v: Vault): Vault {
+  type PinnedScope =
+    | { kind: 'category-year'; categoryId: string; year: number }
+    | { kind: 'group'; categoryIds: string[]; year?: number }
+  const yearOf = (b: Budget): number => {
+    const s = b.scope as unknown as PinnedScope | undefined
+    return s && 'year' in s && s.year != null ? s.year : 0
+  }
+  const convert = (b: Budget): Budget => {
+    const s = b.scope as unknown as PinnedScope | Budget['scope']
+    if (s?.kind === 'category-year')
+      return { ...b, scope: { kind: 'category-period', categoryId: s.categoryId, period: 'year' } }
+    if (s?.kind === 'group' && 'year' in s && s.year != null)
+      return { ...b, scope: { kind: 'group', categoryIds: s.categoryIds, period: 'year' } }
+    return b
+  }
+
+  const tombstones: Tombstone[] = [...v.tombstones]
+  const byKey = new Map<string, { b: Budget; year: number }>()
+  for (const b of v.budgets) {
+    const year = yearOf(b)
+    const next = convert(b)
+    const key = budgetKey(next)
+    const kept = byKey.get(key)
+    if (!kept) {
+      byKey.set(key, { b: next, year })
+      continue
+    }
+    // Ties are impossible pre-migration (the old key included the year), but break on id anyway
+    // so the outcome never depends on array order.
+    const keepExisting = kept.year > year || (kept.year === year && kept.b.id < next.id)
+    const loser = keepExisting ? next : kept.b
+    if (!keepExisting) byKey.set(key, { b: next, year })
+    tombstones.push({ id: loser.id, collection: 'budgets', deletedAt: v.createdAt, updatedAt: v.createdAt })
+  }
+  return { ...v, schema: 8, budgets: [...byKey.values()].map((e) => e.b), tombstones }
 }
 
 /** Forward migrations for older-schema payloads (keyed by the schema they upgrade FROM). */
@@ -280,6 +336,7 @@ const migrations: Record<number, (v: Vault) => Vault> = {
   // one empty collection, every existing record untouched, and a vault that never pins a chart
   // differs only in the version.
   6: (v) => ({ ...v, schema: 7, pinnedWidgets: [] }),
+  7: migrateV7toV8,
 }
 
 export function migrate(vault: Vault): Vault {

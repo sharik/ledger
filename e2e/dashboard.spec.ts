@@ -468,7 +468,7 @@ test.describe('the plan tile keeps each budget\'s identity', () => {
     await setupVault(page)
     await goTab(page, 'plan')
     await page.getByRole('button', { name: '+ Budget' }).click()
-    await page.getByTestId('budget-scope').selectOption('group-m')
+    await page.getByTestId('budget-scope').selectOption('group')
     const opts = page.getByTestId('budget-cat-option')
     await opts.filter({ hasText: 'Dining out' }).click()
     await opts.filter({ hasText: 'Entertainment' }).click()

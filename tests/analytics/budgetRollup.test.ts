@@ -31,7 +31,7 @@ describe('budgetRollup · no double count', () => {
         { id: 'cinema', categoryId: 'ent', amount: -25 },
       ],
     )
-    const r = budgetRollup(v, MK, noProj)
+    const r = budgetRollup(v, MK, 'month', noProj)
     // €40 of Entertainment exists. The recurring row also covers the €15, so the naive sum
     // (40 + 15) reported €55 of spend that never happened.
     expect(r.totalSpent).toBe(40)
@@ -54,7 +54,7 @@ describe('budgetRollup · no double count', () => {
         { id: 'x2', categoryId: 'din', amount: -200 },
       ],
     )
-    const r = budgetRollup(v, MK, noProj)
+    const r = budgetRollup(v, MK, 'month', noProj)
     expect(r.totalSpent).toBe(500) // not 300 + 500
     expect(r.totalBudget).toBe(800) // Fun replaces Entertainment's €500 in the plan
     expect(r.rows.find((x) => x.name === 'Fun')!.subLimit).toBeUndefined()
@@ -68,6 +68,7 @@ describe('budgetRollup · no double count', () => {
         { categoryId: 'cat-transfers', amount: 800, name: 'Fun', scope: { kind: 'group', categoryIds: ['ent', 'din'] } },
       ]),
       MK,
+      'month',
       noProj,
     )
     // Both transaction sets are empty, so only the CATEGORY test can see the nesting.
@@ -83,7 +84,7 @@ describe('budgetRollup · no double count', () => {
       ],
       [{ id: 'x1', categoryId: 'ent', amount: -100 }],
     )
-    const r = budgetRollup(v, MK, noProj)
+    const r = budgetRollup(v, MK, 'month', noProj)
     expect(r.totalSpent).toBe(100) // the shared charge, once
     expect(r.totalBudget).toBe(900) // neither contains the other, so the plan is both
     expect(r.overlapCategoryIds).toEqual(['ent'])
@@ -96,7 +97,7 @@ describe('budgetRollup · no double count', () => {
       [{ categoryId: 'util', amount: 200 }, { categoryId: 'ent', amount: 100 }],
       [{ id: 'x1', categoryId: 'ent', amount: -10 }],
     )
-    const r = budgetRollup(v, MK, noProj)
+    const r = budgetRollup(v, MK, 'month', noProj)
     expect(r.totalBudget).toBe(300)
     expect(r.rows.every((x) => !x.subLimit)).toBe(true)
   })
@@ -111,45 +112,143 @@ describe('budgetRollup · no double count', () => {
       { id: 'x1', categoryId: 'ent', amount: -300, recurring: 'monthly' },
       { id: 'x2', categoryId: 'din', amount: -200 },
     ]
-    const fwd = budgetRollup(vaultWith(budgets, txns), MK, noProj)
-    const rev = budgetRollup(vaultWith([...budgets].reverse(), txns), MK, noProj)
+    const fwd = budgetRollup(vaultWith(budgets, txns), MK, 'month', noProj)
+    const rev = budgetRollup(vaultWith([...budgets].reverse(), txns), MK, 'month', noProj)
     expect(rev.totalBudget).toBe(fwd.totalBudget)
     expect(rev.totalSpent).toBe(fwd.totalSpent)
     expect(rev.memo).toEqual(fwd.memo)
     expect(new Set(rev.overlapCategoryIds)).toEqual(new Set(fwd.overlapCategoryIds))
   })
 
-  it('a group with a year is a memo line — a different period, which dedup cannot reconcile', () => {
+  it('a group with a coarser period is a memo line at the month horizon', () => {
     const r = budgetRollup(
       vaultWith([
         { categoryId: 'ent', amount: 100 },
-        { categoryId: 'cat-transfers', amount: 4800, name: 'Fun', scope: { kind: 'group', categoryIds: ['ent', 'din'], year: 2026 } },
+        { categoryId: 'cat-transfers', amount: 4800, name: 'Fun', scope: { kind: 'group', categoryIds: ['ent', 'din'], period: 'year' } },
       ]),
       MK,
+      'month',
       noProj,
     )
     expect(r.totalBudget).toBe(100)
-    expect(r.memo.annual).toBe(4800)
+    expect(r.memo.longer).toBe(4800)
   })
 
   it('a group overlapping only a memo’d budget is still counted in full', () => {
     // The annual budget is not in the total, so there is nothing for the group to double.
     const r = budgetRollup(
       vaultWith([
-        { categoryId: 'ins', amount: 2400, scope: { kind: 'category-year', categoryId: 'ent', year: 2026 } },
+        { categoryId: 'ins', amount: 2400, scope: { kind: 'category-period', categoryId: 'ent', period: 'year' } },
         { categoryId: 'cat-transfers', amount: 800, name: 'Fun', scope: { kind: 'group', categoryIds: ['ent', 'din'] } },
       ]),
       MK,
+      'month',
       noProj,
     )
     expect(r.totalBudget).toBe(800)
-    expect(r.memo.annual).toBe(2400)
+    expect(r.memo.longer).toBe(2400)
+  })
+})
+
+describe('budgetRollup · horizons', () => {
+  it('a monthly budget counts scaled at the quarter horizon; a quarterly one joins it', () => {
+    const v = vaultWith(
+      [
+        { categoryId: 'groc', amount: 400 },
+        { categoryId: 'ins', amount: 350, scope: { kind: 'category-period', categoryId: 'ins', period: 'quarter' } },
+      ],
+      [
+        { id: 'g1', categoryId: 'groc', amount: -100, date: '2026-07-05' },
+        { id: 'g2', categoryId: 'groc', amount: -120, date: '2026-08-05' }, // same quarter, other month
+        { id: 'i1', categoryId: 'ins', amount: -340, date: '2026-09-01' },
+      ],
+    )
+    const month = budgetRollup(v, MK, 'month', noProj)
+    expect(month.totalBudget).toBe(400) // quarterly budget is a memo at the month horizon
+    expect(month.memo.longer).toBe(350)
+    expect(month.totalSpent).toBe(100)
+
+    const quarter = budgetRollup(v, MK, 'quarter', noProj)
+    expect(quarter.totalBudget).toBe(1550) // 400×3 + 350
+    expect(quarter.totalSpent).toBe(560) // 100 + 120 + 340
+    expect(quarter.memo.longer).toBe(0)
+    expect(quarter.rows.find((x) => x.budgetId === 'b0')!.budget).toBe(1200)
+  })
+
+  it('equal coverage at a shared horizon: the finer-native budget is the sub-limit', () => {
+    const v = vaultWith(
+      [
+        { categoryId: 'ins', amount: 120 }, // monthly base
+        { categoryId: 'ins', amount: 350, scope: { kind: 'category-period', categoryId: 'ins', period: 'quarter' } },
+      ],
+      [{ id: 'i1', categoryId: 'ins', amount: -300, date: '2026-08-01' }],
+    )
+    const r = budgetRollup(v, MK, 'quarter', noProj)
+    expect(r.totalSpent).toBe(300) // counted once
+    expect(r.totalBudget).toBe(350) // the quarterly limit; the monthly ×3 is a sub-limit inside it
+    expect(r.rows.find((x) => x.budgetId === 'b0')!.subLimit).toBe(true)
+    expect(r.overlapCategoryIds).toEqual([])
+  })
+
+  // Codex review: the finer-native tie-break read EQUAL categories as equal coverage even when the
+  // matchers differ, so a monthly base lost to its own recurring-only cover while that cover lost
+  // to the base by strict txn subset — both sub-limits, and the plan total fell to €0.
+  it('a monthly base and its yearly recurring cover never both become sub-limits', () => {
+    const v = vaultWith(
+      [
+        { categoryId: 'ins', amount: 50 }, // monthly base, €600 at the year horizon
+        { categoryId: 'ins', amount: 240, scope: { kind: 'recurring', cadence: 'yearly', categoryId: 'ins' } },
+      ],
+      [
+        { id: 'policy', categoryId: 'ins', amount: -200, recurring: 'yearly', date: '2026-03-01' },
+        { id: 'excess', categoryId: 'ins', amount: -30, date: '2026-05-01' },
+      ],
+    )
+    const r = budgetRollup(v, MK, 'year', noProj)
+    expect(r.rows.find((x) => x.budgetId === 'b1')!.subLimit).toBe(true) // recurring sits inside the base
+    expect(r.rows.find((x) => x.budgetId === 'b0')!.subLimit).toBeUndefined()
+    expect(r.totalBudget).toBe(600)
+  })
+
+  it('a strict container is never demoted by the finer-native tie-break', () => {
+    // The monthly group strictly contains Insurance by category; with only Insurance spending the
+    // txn sets are equal, which used to make the finer group a sub-limit too.
+    const v = vaultWith(
+      [
+        { categoryId: 'ins', amount: 350, scope: { kind: 'category-period', categoryId: 'ins', period: 'quarter' } },
+        { categoryId: 'cat-transfers', amount: 100, name: 'Cover', scope: { kind: 'group', categoryIds: ['ins', 'ent'] } },
+      ],
+      [{ id: 'i1', categoryId: 'ins', amount: -300, date: '2026-08-01' }],
+    )
+    const r = budgetRollup(v, MK, 'quarter', noProj)
+    expect(r.rows.find((x) => x.budgetId === 'b0')!.subLimit).toBe(true)
+    expect(r.rows.find((x) => x.budgetId === 'b1')!.subLimit).toBeUndefined()
+    expect(r.totalBudget).toBe(300) // the group ×3
+  })
+
+  it('a cross-category recurring budget stays a memo overlay at every horizon', () => {
+    const v = vaultWith([
+      { categoryId: 'ent', amount: 100 },
+      { categoryId: 'cat-transfers', amount: 310, scope: { kind: 'recurring', cadence: 'monthly' } },
+    ])
+    for (const hz of ['month', 'quarter', 'half', 'year'] as const) {
+      expect(budgetRollup(v, MK, hz, noProj).memo.crossCategoryRecurring).toBe(310)
+    }
+  })
+
+  it('a per-category yearly recurring budget counts only at the year horizon', () => {
+    const v = vaultWith([{ categoryId: 'ins', amount: 240, scope: { kind: 'recurring', cadence: 'yearly', categoryId: 'ins' } }])
+    expect(budgetRollup(v, MK, 'month', noProj).memo.longer).toBe(240)
+    expect(budgetRollup(v, MK, 'half', noProj).memo.longer).toBe(240)
+    const year = budgetRollup(v, MK, 'year', noProj)
+    expect(year.memo.longer).toBe(0)
+    expect(year.totalBudget).toBe(240)
   })
 })
 
 describe('budgetRollup', () => {
   it('sums plain monthly budgets', () => {
-    const r = budgetRollup(vaultWith([{ categoryId: 'ent', amount: 100 }, { categoryId: 'groc', amount: 400 }]), MK, noProj)
+    const r = budgetRollup(vaultWith([{ categoryId: 'ent', amount: 100 }, { categoryId: 'groc', amount: 400 }]), MK, 'month', noProj)
     expect(r.totalBudget).toBe(500)
     expect(r.rows).toHaveLength(2)
   })
@@ -157,12 +256,13 @@ describe('budgetRollup', () => {
   // An annual budget is not this month's money. Adding it would overstate the plan by a year.
   it('keeps an annual budget out of the monthly total, as a memo', () => {
     const r = budgetRollup(
-      vaultWith([{ categoryId: 'ent', amount: 100 }, { categoryId: 'ins', amount: 2400, scope: { kind: 'category-year', categoryId: 'ins', year: 2026 } }]),
+      vaultWith([{ categoryId: 'ent', amount: 100 }, { categoryId: 'ins', amount: 2400, scope: { kind: 'category-period', categoryId: 'ins', period: 'year' } }]),
       MK,
+      'month',
       noProj,
     )
     expect(r.totalBudget).toBe(100)
-    expect(r.memo.annual).toBe(2400)
+    expect(r.memo.longer).toBe(2400)
     expect(r.rows).toHaveLength(1)
   })
 
@@ -170,6 +270,7 @@ describe('budgetRollup', () => {
     const r = budgetRollup(
       vaultWith([{ categoryId: 'ent', amount: 100 }, { categoryId: 'trav', amount: 800, scope: { kind: 'tracking', trackingId: 'tr1' } }]),
       MK,
+      'month',
       noProj,
     )
     expect(r.totalBudget).toBe(100)
@@ -182,6 +283,7 @@ describe('budgetRollup', () => {
     const r = budgetRollup(
       vaultWith([{ categoryId: 'ent', amount: 100 }, { categoryId: 'ent', amount: 310, scope: { kind: 'recurring', cadence: 'monthly' } }]),
       MK,
+      'month',
       noProj,
     )
     expect(r.totalBudget).toBe(100)
@@ -194,20 +296,22 @@ describe('budgetRollup', () => {
     const r = budgetRollup(
       vaultWith([{ categoryId: 'ent', amount: 60, scope: { kind: 'recurring', cadence: 'monthly', categoryId: 'ent' } }]),
       MK,
+      'month',
       noProj,
     )
     expect(r.totalBudget).toBe(60)
     expect(r.memo.crossCategoryRecurring).toBe(0)
   })
 
-  it('keeps a yearly recurring budget out too — different period', () => {
+  it('keeps a yearly recurring budget out of the month total — coarser native period', () => {
     const r = budgetRollup(
       vaultWith([{ categoryId: 'ins', amount: 240, scope: { kind: 'recurring', cadence: 'yearly', categoryId: 'ins' } }]),
       MK,
+      'month',
       noProj,
     )
     expect(r.totalBudget).toBe(0)
-    expect(r.memo.crossCategoryRecurring).toBe(240)
+    expect(r.memo.longer).toBe(240)
   })
 
   it('counts what is over and reports adherence', () => {
@@ -217,6 +321,7 @@ describe('budgetRollup', () => {
         [{ categoryId: 'ent', amount: -150 }, { categoryId: 'groc', amount: -50 }],
       ),
       MK,
+      'month',
       noProj,
     )
     expect(r.totalSpent).toBe(200)
@@ -225,7 +330,7 @@ describe('budgetRollup', () => {
   })
 
   it('has no adherence percentage when nothing is budgeted — not 0%', () => {
-    const r = budgetRollup(vaultWith([]), MK, noProj)
+    const r = budgetRollup(vaultWith([]), MK, 'month', noProj)
     expect(r.adherencePct).toBeNull()
     expect(r.totalBudget).toBe(0)
   })
@@ -237,6 +342,7 @@ describe('budgetRollup', () => {
         [{ categoryId: 'ent', amount: -20 }, { categoryId: 'groc', amount: -180 }],
       ),
       MK,
+      'month',
       noProj,
     )
     expect(r.rows[0]!.categoryId).toBe('groc')

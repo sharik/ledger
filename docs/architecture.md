@@ -59,7 +59,7 @@ correctly. Convert at the edges — parse and format — never in the middle.
 
 ## Vault schema and migrations
 
-`SCHEMA_VERSION` in `src/model/types.ts` is currently **7**. Forward migrations live in
+`SCHEMA_VERSION` in `src/model/types.ts` is currently **8**. Forward migrations live in
 `src/persist/crypto.ts` (`migrations`, keyed by the schema they upgrade *from*) and run on decrypt,
 so an old vault upgrades before anything reads it.
 
