@@ -93,12 +93,12 @@ test.describe('budget roll-up', () => {
     const before = await page.getByTestId('budget-rollup').locator('[data-pct]').first().getAttribute('data-pct')
 
     await page.getByRole('button', { name: '+ Budget' }).click()
-    await page.getByTestId('budget-scope').selectOption('annual')
+    await page.locator('[data-testid="budget-period"][data-period="year"]').click()
     await page.getByPlaceholder('Amount').fill('2400')
     await expect(page.getByTestId('budget-amount-equiv')).toContainText('≈ €200/mo')
     await page.getByTestId('budget-save').click()
 
-    await expect(page.getByTestId('rollup-memo')).toContainText('annual')
+    await expect(page.getByTestId('rollup-memo')).toContainText('longer horizons')
     // The memo and the row both carry the derived monthly equivalent — for reading,
     // never added into the total (the data-pct assertion below is that rule).
     await expect(page.getByTestId('rollup-memo')).toContainText('≈ €200/mo')
@@ -112,7 +112,7 @@ test.describe('budget roll-up', () => {
     await goTab(page, 'plan')
 
     await page.getByRole('button', { name: '+ Budget' }).click()
-    await page.getByTestId('budget-scope').selectOption('annual')
+    await page.locator('[data-testid="budget-period"][data-period="year"]').click()
     await page.locator('[data-testid="budget-amount-unit"][data-unit="mo"]').click()
     await page.getByPlaceholder('Amount').fill('200')
     await expect(page.getByTestId('budget-amount-equiv')).toContainText('≈ €2,400/yr')
@@ -137,7 +137,7 @@ test.describe('budget roll-up', () => {
     const spentBefore = await rollup.locator('[data-pct]').first().getAttribute('data-pct')
 
     await page.getByRole('button', { name: '+ Budget' }).click()
-    await page.getByTestId('budget-scope').selectOption('group-m')
+    await page.getByTestId('budget-scope').selectOption('group')
     const opts = page.getByTestId('budget-cat-option')
     await opts.filter({ hasText: 'Dining out' }).click() // already has its own budget
     await opts.filter({ hasText: 'Entertainment' }).click()
@@ -192,6 +192,40 @@ test.describe('the plan month can be stepped', () => {
   })
 })
 
+// Minimum resolution: a budget renders at its native period or coarser, never finer — so a
+// quarterly budget is never an impossible monthly bar, and a monthly budget rolls up into the
+// quarter view scaled ×3.
+test.describe('the viewing horizon', () => {
+  test('a quarterly budget paces under Longer horizons at Month and joins the total at Quarter', async ({ page }) => {
+    await setupVault(page)
+    await goTab(page, 'plan')
+
+    await page.getByRole('button', { name: '+ Budget' }).click()
+    await page.locator('[data-testid="budget-period"][data-period="quarter"]').click()
+    await page.getByPlaceholder('Amount').fill('900')
+    await page.getByTestId('budget-save').click()
+
+    // At the default Month horizon it sits under LONGER HORIZONS, paced against its own
+    // quarter, and the roll-up holds it out as a memo rather than summing it into the month.
+    await expect(page.getByTestId('budget-longer')).toContainText('quarterly')
+    await expect(page.getByTestId('rollup-memo')).toContainText('longer horizons')
+
+    // At Quarter the stepper reads the quarter, the budget joins the counted rows, and the
+    // horizon rides the hash so it is shareable and survives reload.
+    await page.getByTestId('plan-horizon-quarter').click()
+    await expect(page.getByTestId('plan-month')).toHaveText(/Q[1-4] \d{4}/)
+    await expect(page.getByTestId('budget-longer')).toHaveCount(0)
+    await expect(page).toHaveURL(/hz=quarter/)
+    await page.reload()
+    await unlock(page)
+    await expect(page.getByTestId('plan-month')).toHaveText(/Q[1-4] \d{4}/)
+
+    // Back to Month: the default horizon keeps the hash clean.
+    await page.getByTestId('plan-horizon-month').click()
+    await expect(page).not.toHaveURL(/hz=/)
+  })
+})
+
 test.describe('a budget explains itself', () => {
   test('the name drills to the transactions the bar was measured from', async ({ page }) => {
     await setupVault(page)
@@ -222,7 +256,7 @@ test.describe('a budget explains itself', () => {
     await setupVault(page)
     await goTab(page, 'plan')
     await page.getByRole('button', { name: '+ Budget' }).click()
-    await page.getByTestId('budget-scope').selectOption('group-m')
+    await page.getByTestId('budget-scope').selectOption('group')
     const opts = page.getByTestId('budget-cat-option')
     await opts.filter({ hasText: 'Dining out' }).click()
     await opts.filter({ hasText: 'Entertainment' }).click()
@@ -340,14 +374,14 @@ test.describe('budgets from history', () => {
     // /mo brings the monthly average back.
     const row0 = rows.nth(0)
     const monthlyFig = await row0.getByTestId('budget-setup-amount').inputValue()
-    await row0.locator('[data-testid="budget-setup-period"][data-period="annual"]').click()
-    await expect(row0).toHaveAttribute('data-kind', 'annual')
+    await row0.locator('[data-testid="budget-setup-period"][data-period="year"]').click()
+    await expect(row0).toHaveAttribute('data-period', 'year')
     const annualFig = await row0.getByTestId('budget-setup-amount').inputValue()
     expect(Number(annualFig)).toBeGreaterThan(Number(monthlyFig))
     // A /yr row states its derived monthly equivalent, live from the amount field.
     await expect(row0).toContainText('≈')
     await expect(row0).toContainText('/mo')
-    await row0.locator('[data-testid="budget-setup-period"][data-period="monthly"]').click()
+    await row0.locator('[data-testid="budget-setup-period"][data-period="month"]').click()
     await expect(row0.getByTestId('budget-setup-amount')).toHaveValue(monthlyFig)
 
     // Add all, then leave one out and change another's amount — the worksheet is the user's.

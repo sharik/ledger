@@ -154,20 +154,27 @@ export interface Budget {
   /** ANALYTICS §6.2 — absent ⇒ legacy category-month semantics. */
   scope?:
     | { kind: 'tracking'; trackingId: string }
-    | { kind: 'category-year'; categoryId: string; year: number }
+    /**
+     * One category over a coarser calendar period — evergreen: "€X per quarter" applies to
+     * every calendar-aligned window (Q1=Jan–Mar, H1=Jan–Jun, year=calendar year) until the
+     * budget is changed, no stored year. `period` deliberately excludes `'month'`: an absent
+     * scope is the only spelling of "this category, monthly", so one meaning has one
+     * `budgetKey`. Replaced `category-year {year}` in schema 8.
+     */
+    | { kind: 'category-period'; categoryId: string; period: 'quarter' | 'half' | 'year' }
     /** Recurring spend of one cadence. Cross-category when `categoryId` is absent —
      *  minus `excludeCategoryIds` (e.g. Housing), with the budget's own `categoryId`
      *  parked on CAT_TRANSFERS, as tracking-scoped budgets do. When `categoryId` is
      *  set it targets that single category's recurring spend (#12c). */
     | { kind: 'recurring'; cadence: 'monthly' | 'yearly'; excludeCategoryIds?: string[]; categoryId?: string }
     /**
-     * Several categories under one limit ("Fun" = Dining out + Entertainment). `year` absent ⇒
-     * the viewed month; present ⇒ that calendar year — presence IS the discriminator, so a
-     * "yearly budget with no year" cannot be expressed, and it mirrors `recurring.categoryId?`
-     * (absent ⇒ cross-category). The budget's own `categoryId` parks on CAT_TRANSFERS, as
-     * tracking and cross-category recurring scopes do.
+     * Several categories under one limit ("Fun" = Dining out + Entertainment). `period` absent ⇒
+     * monthly — presence IS the discriminator, mirroring `category-period` (and evergreen the
+     * same way: calendar-aligned windows, no stored year; replaced `year?` in schema 8). The
+     * budget's own `categoryId` parks on CAT_TRANSFERS, as tracking and cross-category
+     * recurring scopes do.
      */
-    | { kind: 'group'; categoryIds: string[]; year?: number }
+    | { kind: 'group'; categoryIds: string[]; period?: 'quarter' | 'half' | 'year' }
 }
 
 /**
@@ -181,7 +188,7 @@ export interface Budget {
 export function budgetCategoryIds(b: Budget): string[] {
   const s = b.scope
   if (!s) return [b.categoryId]
-  if (s.kind === 'category-year') return [s.categoryId]
+  if (s.kind === 'category-period') return [s.categoryId]
   if (s.kind === 'recurring') return s.categoryId ? [s.categoryId] : []
   if (s.kind === 'group') return s.categoryIds
   return []
@@ -204,10 +211,13 @@ export function budgetKey(b: Budget): string {
   const s = b.scope
   if (!s) return `cat|${b.categoryId}` // legacy category-month (Convention #5: one per category)
   if (s.kind === 'tracking') return `tracking|${s.trackingId}`
-  if (s.kind === 'category-year') return `cat-year|${s.categoryId}|${s.year}`
+  // Period joins the key: one budget per category PER PERIOD, so a steady monthly base and a
+  // quarterly lump cover on the same category coexist (double-counting at a shared viewing
+  // horizon is the rollup's job — equal txn sets make the finer-native budget the subLimit).
+  if (s.kind === 'category-period') return `cat-period|${s.categoryId}|${s.period}`
   if (s.kind === 'recurring') return `recurring|${s.cadence}|${s.categoryId ?? '*'}`
   // Sorted, so the same set picked in a different order on two devices is one budget.
-  return `group|${s.year ?? '*'}|${[...s.categoryIds].sort().join(',')}`
+  return `group|${s.period ?? 'month'}|${[...s.categoryIds].sort().join(',')}`
 }
 
 export interface Goal {
@@ -506,7 +516,7 @@ export interface ConflictEntry {
   reviewedAt?: Iso
 }
 
-export const SCHEMA_VERSION = 7
+export const SCHEMA_VERSION = 8
 
 export interface Vault {
   schema: number

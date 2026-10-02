@@ -1,5 +1,4 @@
 import type {
-  Budget,
   BalanceSnapshot,
   CategoryRole,
   ConflictEntry,
@@ -464,27 +463,11 @@ export function mtdCashflowDelta(d: Derived): number {
 }
 
 // ---------- budgets ----------
-
-export function budgetSpent(d: Derived, b: Budget, mk: MonthKey): number {
-  return round2(d.spentByCatMonth.get(`${mk}|${b.categoryId}`) ?? 0)
-}
-
-/** spent ÷ (budget × elapsed fraction); >1 means running ahead of the month's pace. */
-export function budgetPace(d: Derived, b: Budget, mk: MonthKey): number {
-  const spent = budgetSpent(d, b, mk)
-  const elapsed = mk === d.currentMonth ? dayOfToday() / daysInMonth(mk) : 1
-  const denom = b.amount * elapsed
-  return denom > 0 ? spent / denom : 0
-}
-
-export function budgetHistory(d: Derived, b: Budget, months: number, endMk: MonthKey): { mk: MonthKey; spent: number }[] {
-  const out: { mk: MonthKey; spent: number }[] = []
-  for (let i = months - 1; i >= 0; i--) {
-    const mk = addMonths(endMk, -i)
-    out.push({ mk, spent: budgetSpent(d, b, mk) })
-  }
-  return out
-}
+// The scope-aware arithmetic lives in `analytics/budgets.ts` (`budgetScopeSpent`,
+// `budgetSpentAt`, `budgetRollup`). The scope-blind `budgetSpent`/`budgetPace`/
+// `budgetHistory` that used to live here keyed `${mk}|${categoryId}` directly and
+// were removed with the period rework — they answered a question no surface asks
+// any more.
 
 export interface SpendRow {
   categoryId: string
@@ -496,7 +479,10 @@ export interface SpendRow {
 
 /** Spending by category for a month, Housing excluded (per mock), sorted desc. */
 export function spendingByCategory(d: Derived, mk: MonthKey): SpendRow[] {
-  const budgetByCat = new Map(d.vault.budgets.map((b) => [b.categoryId, b.amount]))
+  // Legacy monthly budgets only: a scoped budget (quarterly, annual, group, recurring,
+  // per-trip) parks or shares its categoryId and covers a different window — its amount
+  // must not masquerade as the category's monthly budget.
+  const budgetByCat = new Map(d.vault.budgets.filter((b) => !b.scope).map((b) => [b.categoryId, b.amount]))
   const rows: SpendRow[] = []
   for (const c of d.vault.categories) {
     // Income never appears in the spending breakdown (correctness). The breakdown

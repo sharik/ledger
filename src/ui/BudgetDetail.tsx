@@ -2,10 +2,10 @@
 //
 // `budgetHistory`/`budgetPace` were computed and never rendered (flagged P2 in the comprehension
 // audit), and TECH-SPEC §7.4 asked for "6-month mini bars from derived history + dashed budget
-// line" that never shipped. This is that, generalised: months for a monthly budget, calendar
-// years for an annual one, measured through `budgetScopeSpent` so the panel and the row's bar
-// are produced by one arithmetic and cannot disagree.
-import { budgetPeriodHistory, isMonthlyScope, scopeTrailingAvg } from '../analytics/budgets'
+// line" that never shipped. This is that, generalised: the budget's own NATIVE windows —
+// months, quarters, halves or calendar years — measured through `budgetScopeSpent` so the
+// panel and the row's bar are produced by one arithmetic and cannot disagree.
+import { budgetNativePeriod, budgetPeriodHistory, periodWindow, scopeTrailingAvg, type BudgetPeriod } from '../analytics/budgets'
 import type { Budget } from '../model/types'
 import { budgetCategoryIds } from '../model/types'
 import { useDerived, useStoreState } from './store'
@@ -13,9 +13,10 @@ import { useRateBook } from './fxCtx'
 import { BarChart, niceTicks, useMeasuredWidth } from './charts'
 import { BRICK, FAINT, INK, MONO, MUT, fmt } from './theme'
 
-/** A monthly budget shows a year; an annual one shows the years the vault actually has. */
-const MONTHLY_PERIODS = 12
-const ANNUAL_PERIODS = 4
+/** A monthly budget shows a year; coarser periods show the windows the vault plausibly has. */
+const PERIODS: Record<BudgetPeriod, number> = { month: 12, quarter: 8, half: 4, year: 4 }
+const PERIOD_PLURAL: Record<BudgetPeriod, string> = { month: 'MONTHS', quarter: 'QUARTERS', half: 'HALF-YEARS', year: 'YEARS' }
+const AVG_WORD: Record<BudgetPeriod, string> = { month: 'month', quarter: 'quarter', half: 'half-year', year: 'year' }
 
 export function BudgetDetail({
   budget,
@@ -38,8 +39,10 @@ export function BudgetDetail({
   const rb = useRateBook()
   const [ref, width] = useMeasuredWidth()
 
-  const monthly = isMonthlyScope(budget)
-  const history = budgetPeriodHistory(vault, budget, mk, monthly ? MONTHLY_PERIODS : ANNUAL_PERIODS, rb)
+  const native = budgetNativePeriod(budget)
+  const history = budgetPeriodHistory(vault, budget, mk, native ? PERIODS[native] : 0, rb)
+  /** The key of the window containing the viewed month — the still-partial, hatched bar. */
+  const currentKey = native ? periodWindow(native, mk).key : ''
   const avg3 = scopeTrailingAvg(vault, budget, 3, mk, rb)
   const avg6 = scopeTrailingAvg(vault, budget, 6, mk, rb)
   const members = budgetCategoryIds(budget)
@@ -60,7 +63,7 @@ export function BudgetDetail({
       ) : (
         <>
           <div style={{ fontFamily: MONO, fontSize: 9.5, color: FAINT, letterSpacing: '.06em' }}>
-            {monthly ? `LAST ${MONTHLY_PERIODS} MONTHS` : `LAST ${ANNUAL_PERIODS} YEARS`} · BAR = SPENT · LINE = THIS BUDGET
+            LAST {history.length} {PERIOD_PLURAL[native!]} · BAR = SPENT · LINE = THIS BUDGET
           </div>
           <div ref={ref}>
             {width > 0 && (
@@ -71,9 +74,9 @@ export function BudgetDetail({
                 groups={history.map((p) => ({
                   key: p.key,
                   label: p.label,
-                  labelEmph: p.key === mk || p.key === mk.slice(0, 4),
+                  labelEmph: p.key === currentKey,
                   // The current period is still partial — hatched, as everywhere else in the app.
-                  hatched: p.key === mk || p.key === mk.slice(0, 4),
+                  hatched: p.key === currentKey,
                   segs: [{ id: 'spent', name: 'spent', color: p.spent > p.budget ? BRICK : 'var(--accent)', value: p.spent }],
                 }))}
                 yMax={top}
@@ -81,7 +84,7 @@ export function BudgetDetail({
                 overlay={{ color: 'var(--ink2)', values: history.map(() => budget.amount) }}
                 onSegClick={(groupKey) => onDrillPeriod(groupKey)}
                 tipContent={(g, s) => `${g.label} · ${fmt(s.value)} of ${fmt(budget.amount)}`}
-                ariaLabel={`Spend against this budget over the last ${history.length} ${monthly ? 'months' : 'years'}`}
+                ariaLabel={`Spend against this budget over the last ${history.length} ${PERIOD_PLURAL[native!].toLowerCase()}`}
               />
             )}
           </div>
@@ -97,9 +100,9 @@ export function BudgetDetail({
       {(avg3 !== null || avg6 !== null) && (
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', fontSize: 12, color: MUT }}>
           <span style={{ fontFamily: MONO, fontSize: 9.5, color: FAINT, letterSpacing: '.06em' }}>TYPICAL</span>
-          {avg3 !== null && <Suggest label={`3-month average ${fmt(avg3)}`} amount={avg3} onUse={onUseAmount} />}
-          {avg6 !== null && <Suggest label={`6-month average ${fmt(avg6)}`} amount={avg6} onUse={onUseAmount} />}
-          <span style={{ fontSize: 11, color: FAINT }}>complete months only — the number is yours to choose</span>
+          {avg3 !== null && <Suggest label={`3-${AVG_WORD[native!]} average ${fmt(avg3)}`} amount={avg3} onUse={onUseAmount} />}
+          {avg6 !== null && <Suggest label={`6-${AVG_WORD[native!]} average ${fmt(avg6)}`} amount={avg6} onUse={onUseAmount} />}
+          <span style={{ fontSize: 11, color: FAINT }}>complete {AVG_WORD[native!]}s only — the number is yours to choose</span>
         </div>
       )}
 

@@ -536,7 +536,49 @@ describe('propose_plan (budgets & goals)', () => {
     const { queued } = queueOf(vault, { action: 'create', target: 'budget', categoryIds: [dining], amount: 'trailing-3' })
     // June is the only complete month with data: €60.50 of Dining out.
     expect(queued[0]!.op).toMatchObject({ kind: 'addBudget', amount: 61 })
-    expect(queued[0]!.summary).toContain('3-month average')
+    expect(queued[0]!.summary).toContain('trailing average over 3 periods')
+  })
+
+  it('period arms: category-period and group-with-period mint, recurring refuses quarter/half', () => {
+    const { vault } = fixture()
+    const shop = catId(vault, 'Shopping')
+    const q = queueOf(vault, { action: 'create', target: 'budget', categoryIds: [shop], period: 'quarter', amount: '300' })
+    expect(q.queued[0]!.op).toMatchObject({ kind: 'addBudget', scope: { kind: 'category-period', categoryId: shop, period: 'quarter' } })
+    const ids = [shop, catId(vault, 'Dining out')]
+    const g = queueOf(vault, { action: 'create', target: 'budget', categoryIds: ids, period: 'half', amount: '900', name: 'Fun' })
+    expect(g.queued[0]!.op).toMatchObject({ kind: 'addBudget', scope: { kind: 'group', categoryIds: ids, period: 'half' } })
+    // Recurring charges carry only monthly|yearly on the transaction, so a quarter window has
+    // nothing to match — the error redirects to an ordinary category budget.
+    const rec = queueOf(vault, { action: 'create', target: 'budget', recurringOnly: true, period: 'quarter', amount: '100' })
+    expect(rec.out.error).toBeTruthy()
+    expect(JSON.stringify(rec.out)).toContain('monthly or yearly')
+    const bad = queueOf(vault, { action: 'create', target: 'budget', categoryIds: [shop], period: 'weekly', amount: '10' })
+    expect(bad.out.error).toBeTruthy()
+  })
+
+  // Codex review: an update with a new period but no categoryIds fell through to "keep the scope",
+  // so an annual figure was silently saved as a monthly limit.
+  it('an update that changes the period without categoryIds is refused, not silently ignored', () => {
+    const { vault } = fixture()
+    const shop = catId(vault, 'Shopping')
+    vault.budgets.push({ id: 'b-shop', updatedAt: 'x', categoryId: shop, amount: 100 })
+    const change = queueOf(vault, { action: 'update', target: 'budget', id: 'b-shop', period: 'year', amount: '1200' })
+    expect(change.out.error).toBeTruthy()
+    expect(change.queued).toHaveLength(0)
+    expect(JSON.stringify(change.out)).toContain('categoryIds')
+    // Restating the period it already has is still an amount-only change.
+    const same = queueOf(vault, { action: 'update', target: 'budget', id: 'b-shop', period: 'month', amount: '120' })
+    expect(same.out.error).toBeUndefined()
+    expect(same.queued).toHaveLength(1)
+  })
+
+  it('the same category can carry budgets at two periods — different keys, no clash', () => {
+    const { vault } = fixture()
+    const shop = catId(vault, 'Shopping')
+    vault.budgets.push({ id: 'b-shop-m', updatedAt: 'x', categoryId: shop, amount: 100 })
+    const { out, queued } = queueOf(vault, { action: 'create', target: 'budget', categoryIds: [shop], period: 'quarter', amount: '350' })
+    expect(out.error).toBeUndefined()
+    expect(queued).toHaveLength(1)
   })
 
   it('refuses a trailing average it cannot compute, rather than proposing €0', () => {
@@ -687,9 +729,10 @@ describe('propose_plan (budgets & goals)', () => {
     // The fixture's Dining out rows span June and July; the goal counts both, with no year boundary.
     expect(goalStatus(vault, goal, TODAY).progress).toBe(90.5)
 
-    // The same category as a yearly budget is period-scoped, and that is what a per-year target needs.
+    // The same category as a yearly budget is period-scoped, and that is what a per-year target
+    // needs. `cadence: "yearly"` predates `period` and stays accepted as an alias.
     const { queued } = queueOf(vault, { action: 'create', target: 'budget', categoryIds: [dining], cadence: 'yearly', amount: '1000' })
-    expect(queued[0]!.op).toMatchObject({ kind: 'addBudget', scope: { kind: 'category-year', year: 2026 } })
+    expect(queued[0]!.op).toMatchObject({ kind: 'addBudget', scope: { kind: 'category-period', period: 'year' } })
   })
 
   it('list_goals says what drives each goal, not only how far along it is', () => {
@@ -720,5 +763,34 @@ describe('propose_plan (budgets & goals)', () => {
     const def = TOOLS.find((t) => t.name === 'propose_edit')!
     expect(JSON.stringify(def.parameters)).toContain('recategorize, set_recurring, tag_tracking, merge_merchant')
     expect(def.parameters.required).toContain('txnIds')
+  })
+})
+
+describe('spending_cadence', () => {
+  it('reports each category’s rhythm with figures under full access, from the shared detection', () => {
+    const { vault } = fixture()
+    // A quarterly payer over a year of complete months, so the rhythm is unambiguous.
+    for (const mk of ['2025-07', '2025-08', '2025-09', '2025-10', '2025-11', '2025-12', '2026-01', '2026-02', '2026-03', '2026-04', '2026-05']) {
+      txn(vault, `${mk}-15`, 'filler', 'Other', -1)
+    }
+    for (const mk of ['2025-09', '2025-12', '2026-03', '2026-06']) {
+      txn(vault, `${mk}-10`, 'Insurer', 'Insurance', -90)
+    }
+    const r = json(vault, 'spending_cadence')
+    const ins = r.categories.find((c: { name: string }) => c.name === 'Insurance')
+    expect(ins).toMatchObject({ cadence: 'quarterly', suggestedPeriod: 'quarter' })
+    expect(ins.suggestedNativeTotal).toBeGreaterThan(0)
+    expect(r.monthsCovered).toBeGreaterThanOrEqual(6)
+  })
+
+  it('names the periods a category is already budgeted at', () => {
+    const { vault, dining } = fixture()
+    vault.budgets.push(
+      { id: 'b-m', updatedAt: 'x', categoryId: dining, amount: 100 },
+      { id: 'b-q', updatedAt: 'x', categoryId: dining, amount: 350, scope: { kind: 'category-period', categoryId: dining, period: 'quarter' } },
+    )
+    const r = json(vault, 'spending_cadence')
+    const row = r.categories.find((c: { categoryId: string }) => c.categoryId === dining)
+    expect(row.budgetedPeriods.sort()).toEqual(['month', 'quarter'])
   })
 })

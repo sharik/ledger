@@ -2,15 +2,29 @@ import { useNarrow } from './responsive'
 import { useEffect, useRef, useState } from 'react'
 import { ACCENT, BRICK, FAINT, GREEN, HAIR, INK, MONO, MUT, SURFACE, fmt } from './theme'
 import { useDerived, useStore, useStoreState } from './store'
-import { currentMonthKey, dayOfToday, daysInMonth, todayStr } from '../model/selectors'
-import { monthEndProjectionThrough, yearElapsedFraction, yearEndProjection } from '../analytics/project'
+import { currentMonthKey, daysInMonth, todayStr } from '../model/selectors'
+import { periodElapsedFraction, periodEndProjection, periodEndProjectionThrough } from '../analytics/project'
 import { daysBetween } from '../analytics/selections'
 import { goalState, goalStatus } from '../analytics/goals'
-import { budgetRollup, budgetScopeSpent, budgetScopeLabel, budgetScopeYear, isMonthlyScope, monthlyEquivalent, recurringBreakdown } from '../analytics/budgets'
+import {
+  PERIOD_MONTHS,
+  budgetAmountAt,
+  budgetNativePeriod,
+  budgetRollup,
+  budgetScopeLabel,
+  budgetScopeSpent,
+  budgetSpentAt,
+  monthlyEquivalent,
+  periodKeyBounds,
+  periodWindow,
+  recurringBreakdown,
+  type BudgetPeriod,
+} from '../analytics/budgets'
 import { GoalRow, BudgetRow, groupTitle } from './kit/rows'
 import { BarRows, DivergingRows, computeBudgetDomain } from './charts'
 import { useFreshness } from './freshness'
 import { useRateBook } from './fxCtx'
+import { useAssistantOptional } from './assistant/ctx'
 import { useView } from './view'
 import { EmptyState } from './kit/EmptyState'
 import { CAT_TRANSFERS } from '../model/types'
@@ -39,27 +53,27 @@ const MOVER_LABEL_W = 130
  * It used to return `null` there while the call site spread `?? {}`, so a group's history bar
  * opened *every* transaction in the month — a filter promised and not applied.
  */
-function budgetDrill(b: Budget, mk: MonthKey): TxnFilter {
+function budgetDrill(b: Budget, mk: MonthKey, hz: BudgetPeriod): TxnFilter {
   const scope = b.scope
-  const from = `${mk}-01`
-  const to = `${mk}-${String(daysInMonth(mk)).padStart(2, '0')}`
-  if (!scope) return { cat: b.categoryId, from, to }
-  if (scope.kind === 'category-year') return { cat: scope.categoryId, from: `${scope.year}-01-01`, to: `${scope.year}-12-31` }
-  if (scope.kind === 'tracking') return { tracking: scope.trackingId }
-  if (scope.kind === 'recurring') {
-    const yearly = scope.cadence === 'yearly'
-    return {
-      status: 'recurring',
-      from: yearly ? `${mk.slice(0, 4)}-01-01` : from,
-      to: yearly ? `${mk.slice(0, 4)}-12-31` : to,
-      ...(scope.categoryId ? { cat: scope.categoryId } : {}),
-    }
-  }
-  if (scope.kind === 'group') {
-    const yr = scope.year != null
-    return { cats: scope.categoryIds.join(','), from: yr ? `${scope.year}-01-01` : from, to: yr ? `${scope.year}-12-31` : to }
-  }
-  return { from, to } // unreachable: every scope kind has an arm (the `budgetKey` discipline)
+  if (scope?.kind === 'tracking') return { tracking: scope.trackingId }
+  // A budget counted at the horizon drills the horizon window; one coarser than the horizon
+  // drills its own native window — the same window its bar was measured over.
+  const native = budgetNativePeriod(b)!
+  const w = periodWindow(PERIOD_MONTHS[native] > PERIOD_MONTHS[hz] ? native : hz, mk)
+  const range = { from: w.from, to: w.to }
+  if (!scope) return { cat: b.categoryId, ...range }
+  if (scope.kind === 'category-period') return { cat: scope.categoryId, ...range }
+  if (scope.kind === 'recurring') return { status: 'recurring', ...range, ...(scope.categoryId ? { cat: scope.categoryId } : {}) }
+  return { cats: scope.categoryIds.join(','), ...range }
+}
+
+const HZ_LABEL: Record<BudgetPeriod, string> = { month: 'Month', quarter: 'Quarter', half: 'Half-year', year: 'Year' }
+const HZ_UNIT: Record<BudgetPeriod, string> = { month: 'month', quarter: 'quarter', half: 'half-year', year: 'year' }
+const PERIOD_SHORT: Record<BudgetPeriod, string> = { month: 'mo', quarter: 'qr', half: 'half', year: 'yr' }
+
+/** The viewing horizon from the route — absent or junk ⇒ month. */
+function readHz(raw: string | undefined): BudgetPeriod {
+  return raw === 'quarter' || raw === 'half' || raw === 'year' ? raw : 'month'
 }
 
 const addBtn = { fontSize: 12, color: ACCENT, fontWeight: 500, background: 'none', border: 'none', cursor: 'pointer' }
@@ -91,6 +105,9 @@ export function PlanScreen() {
    * browser's own history — the treatment every other drill on this app already gets.
    */
   const [cm, setCm] = useState<MonthKey>(() => readMk(parseHash(location.hash).query.mk, thisMonth) ?? thisMonth)
+  /** The viewing horizon (#/plan?hz=quarter). Budgets at or finer than it are summed into its
+   *  window; coarser ones render against their own native window under "Longer horizons". */
+  const [hz, setHz] = useState<BudgetPeriod>(() => readHz(parseHash(location.hash).query.hz))
   const seenNonce = useRef(0)
   useEffect(() => {
     const seed = view.seed
@@ -100,36 +117,43 @@ export function PlanScreen() {
     // the Transactions screen applies to its filters.
     const mk = readMk(seed.query.mk, thisMonth)
     if (mk) setCm(mk)
+    if (seed.query.hz) setHz(readHz(seed.query.hz))
   }, [view.seed, thisMonth])
   useEffect(() => {
     if (view.tab !== 'plan') return
-    const h = formatHash({ tab: 'plan', query: cm === thisMonth ? {} : { mk: cm } })
+    const h = formatHash({
+      tab: 'plan',
+      query: { ...(cm === thisMonth ? {} : { mk: cm }), ...(hz === 'month' ? {} : { hz }) },
+    })
     if (location.hash !== h) history.replaceState(history.state, '', h)
-  }, [cm, thisMonth, view.tab])
+  }, [cm, hz, thisMonth, view.tab])
 
-  /** A past month is finished: no pace, no projection, no "today" marker — just what it cost. */
-  const isCurrent = cm === thisMonth
   const fresh = useFreshness()
   const rb = useRateBook()
-  const elapsed = isCurrent ? dayOfToday() / daysInMonth(cm) : 1
+  const assistant = useAssistantOptional()
+  /** The horizon's calendar window containing the viewed month — the span every counted bar sums. */
+  const win = periodWindow(hz, cm)
+  /** A past window is finished: no pace, no projection, no "today" marker — just what it cost. */
+  const isCurrent = thisMonth >= win.fromMk && thisMonth <= win.toMk
+  const elapsed = isCurrent ? periodElapsedFraction(hz, cm, today) : 1
   const elapsedPct = Math.round(elapsed * 100)
 
   /**
    * Every pace figure on this screen divides by the window the STATEMENTS cover, not by the
-   * calendar month. The header has always printed both "time elapsed 97%" and "data through
+   * calendar. The header has always printed both "time elapsed 97%" and "data through
    * 23 Jul" and reconciled neither: dividing 23 days of charges by 30 elapsed days understated
    * every projection here by ~30%. With nothing imported there is no statement window, so it
    * falls back to today and behaves exactly as before.
    */
   const through = fresh.through ?? today
-  // A past month is not projected at all: extrapolating a month that has already ended would state
-  // a figure about the past. Where its statements stop is still shown, by the coverage marker.
-  const projectTo = (spent: number) => (isCurrent ? monthEndProjectionThrough(spent, cm, through) : spent)
-  // 0..1 of THIS month the statements reach: full when coverage has passed the month, none when
-  // it has not reached it. Drives the second marker on the bars.
-  const coveredFrac =
-    through.slice(0, 7) === cm ? Number(through.slice(8, 10)) / daysInMonth(cm) : through > cm ? 1 : 0
-  const coveredDays = through.slice(0, 7) === cm ? Number(through.slice(8, 10)) : null
+  // A past window is not projected at all: extrapolating a period that has already ended would
+  // state a figure about the past. Where its statements stop is still shown, by the coverage marker.
+  const projectTo = (spent: number) => (isCurrent ? periodEndProjectionThrough(spent, hz, cm, through) : spent)
+  // 0..1 of THIS window the statements reach: full when coverage has passed it, none when it has
+  // not reached it. Drives the second marker on the bars.
+  const winDays = daysBetween(win.from, win.to) + 1
+  const coveredDays = through >= win.from && through <= win.to ? daysBetween(win.from, through) + 1 : null
+  const coveredFrac = coveredDays !== null ? coveredDays / winDays : through > win.to ? 1 : 0
   const paceBasis = coveredDays !== null && coveredFrac < elapsed ? `${coveredDays} days of data` : undefined
 
   /** The goal dialog: `null` closed, `{}` adding, `{ id }` editing. */
@@ -242,36 +266,77 @@ export function PlanScreen() {
       </div>
       <div>
         {budgets.length === 0 && (
-          <EmptyState
-            testid="plan-budgets-empty"
-            dense
-            basis="no-data"
-            title="No budgets yet."
-            body="A budget can cover one category or several, a month or a whole year, a recurring cadence, or one trip. Spend is always derived from your transactions, never typed in."
-            action={{ label: 'Add a budget', onClick: () => setDlg({}) }}
-            secondaryAction={{ label: 'Suggest from history', onClick: () => setSetup(true) }}
-          />
+          <>
+            <EmptyState
+              testid="plan-budgets-empty"
+              dense
+              basis="no-data"
+              title="No budgets yet."
+              body="A budget can cover one category or several — over a month, a quarter, a half-year or a year — a recurring cadence, or one trip. Spend is always derived from your transactions, never typed in."
+              action={{ label: 'Add a budget', onClick: () => setDlg({}) }}
+              secondaryAction={{ label: 'Suggest from history', onClick: () => setSetup(true) }}
+            />
+            {assistant && vault.settings.assist?.chat && (
+              <div style={{ marginTop: 6 }}>
+                <button
+                  data-testid="plan-ask-assistant"
+                  onClick={() => {
+                    assistant.setOpen(true)
+                    assistant.send(
+                      'Look at my spending rhythm and suggest a set of budgets — monthly, quarterly, half-yearly or yearly per category, as the spending warrants.',
+                    )
+                  }}
+                  style={{ fontSize: 12, color: ACCENT, background: 'none', border: 'none', padding: 0, cursor: 'pointer' }}
+                >
+                  Ask the assistant to suggest budgets →
+                </button>
+              </div>
+            )}
+          </>
         )}
         {budgets.length > 0 && (() => {
-          const roll = budgetRollup(vault, cm, projectTo, rb)
+          const roll = budgetRollup(vault, cm, hz, projectTo, rb)
+          const hzMonths = PERIOD_MONTHS[hz]
+
+          // Each budget renders against the window it can honestly be read at (minimum
+          // resolution): at or finer than the horizon ⇒ summed over the horizon window,
+          // amount scaled; coarser ⇒ its own native window with its own pace ("Longer
+          // horizons"); per-trip ⇒ lifetime, no time context at all.
+          const rows = budgets.map((b) => {
+            const native = budgetNativePeriod(b)
+            if (native === null) {
+              const spent = budgetScopeSpent(vault, b, cm, rb)
+              return { b, native, longer: false, spent, amount: b.amount, proj: spent, rowElapsed: 1, covered: undefined as number | undefined, basis: undefined as string | undefined }
+            }
+            if (PERIOD_MONTHS[native] <= hzMonths) {
+              const spent = budgetSpentAt(vault, b, hz, cm, rb)
+              return { b, native, longer: false, spent, amount: budgetAmountAt(b, hz), proj: projectTo(spent), rowElapsed: elapsed, covered: coveredFrac, basis: paceBasis }
+            }
+            const nw = periodWindow(native, cm)
+            const pElapsed = periodElapsedFraction(native, cm, today)
+            const running = pElapsed > 0 && pElapsed < 1
+            const spent = budgetScopeSpent(vault, b, cm, rb)
+            return {
+              b,
+              native,
+              longer: true,
+              spent,
+              amount: b.amount,
+              proj: running ? periodEndProjection(spent, native, cm, today) : spent,
+              rowElapsed: pElapsed,
+              covered: undefined as number | undefined,
+              basis: running ? `${daysBetween(nw.from, today) + 1} days of ${nw.label} (calendar)` : undefined,
+            }
+          })
+          const mainRows = rows.filter((r) => !r.longer)
+          const longerRows = rows.filter((r) => r.longer)
+          const longerMonthly = longerRows.reduce((s, r) => s + (monthlyEquivalent(r.b) ?? 0), 0)
+
           const memoParts = [
-            roll.memo.annual > 0 && `annual ${fmt(roll.memo.annual)} (≈ ${fmt(roll.memo.annual / 12)}/mo)`,
+            roll.memo.longer > 0 && `longer horizons ${fmt(roll.memo.longer)} (≈ ${fmt(longerMonthly)}/mo)`,
             roll.memo.perTrip > 0 && `per-trip ${fmt(roll.memo.perTrip)}`,
             roll.memo.crossCategoryRecurring > 0 && `recurring across categories ${fmt(roll.memo.crossCategoryRecurring)}`,
           ].filter(Boolean) as string[]
-
-          const rows = budgets.map((b) => {
-            // A budget covering a different period than this month has no MONTHLY pace — but a
-            // year-scoped one has a year of its own to pace against: its marker sits at that
-            // year's elapsed fraction (calendar days) and its dashed marker is a year-end pace.
-            // Only a per-trip budget keeps no time context at all.
-            const monthly = isMonthlyScope(b)
-            const spent = budgetScopeSpent(vault, b, cm, rb)
-            const year = budgetScopeYear(b, cm)
-            const yElapsed = year != null ? yearElapsedFraction(year, today) : null
-            const proj = monthly ? projectTo(spent) : year != null ? yearEndProjection(spent, year, today) : spent
-            return { b, monthly, spent, proj, year, yElapsed }
-          })
 
           // ONE domain across the roll-up row AND every category row. Two separate calls put
           // the roll-up's budget tick at 61% of its track while the rows sat at 29%, so the
@@ -279,7 +344,7 @@ export function PlanScreen() {
           // "?" both promised "all bars share one scale".
           const domainMax = computeBudgetDomain([
             { spent: roll.totalSpent, budget: roll.totalBudget, proj: roll.totalProj },
-            ...rows.map((r) => ({ spent: r.spent, budget: r.b.amount, proj: r.proj })),
+            ...rows.map((r) => ({ spent: r.spent, budget: r.amount, proj: r.proj })),
           ])
 
           const nameOf = (r: (typeof roll.rows)[number]) => r.name ?? d.catById.get(r.categoryId)?.name ?? '—'
@@ -303,7 +368,7 @@ export function PlanScreen() {
               value: `${fmt(Math.abs(r.delta))} ${r.delta > 0 ? 'over' : 'left'}`,
               title: drillable ? `Open ${name} this month →` : undefined,
               onClick: drillable
-                ? () => goTxns({ cat: r.categoryId, from: `${cm}-01`, to: `${cm}-${String(daysInMonth(cm)).padStart(2, '0')}` })
+                ? () => goTxns({ cat: r.categoryId, from: win.from, to: win.to })
                 : undefined,
             }
           }
@@ -354,83 +419,101 @@ export function PlanScreen() {
                 </div>
               )}
 
-              {rows.map(({ b, monthly, spent, proj, year, yElapsed }, i) => {
-                const rec = b.scope?.kind === 'recurring' ? b.scope : undefined
-                // A recurring budget is cross-category ("Recurring", with a breakdown) unless it
-                // targets one category (#12c), in which case it reads like an ordinary category row.
-                const recTotal = rec && !rec.categoryId
-                const grp = b.scope?.kind === 'group' ? b.scope : undefined
-                const trackId = b.scope?.kind === 'tracking' ? b.scope.trackingId : undefined
-                const track = trackId ? vault.trackings.find((tr) => tr.id === trackId) : undefined
-                const cat = d.catById.get(b.categoryId)
-                const members = grp ? grp.categoryIds.map((id) => d.catById.get(id)) : []
-                const label = budgetScopeLabel(vault, b)
-                const perMonth = monthlyEquivalent(b, cm)
-                const breakdown = recTotal ? recurringBreakdown(vault, rec.cadence, cm, rec.excludeCategoryIds, rb) : []
-                return (
-                  <div key={b.id}>
-                    <BudgetRow
-                      cat={b.name ?? (recTotal ? 'Recurring' : grp ? groupTitle(members) : (track?.name ?? cat?.name ?? '—'))}
-                      caption={b.scope ? (perMonth != null ? `${label} · ≈ ${fmt(perMonth)}/mo` : label) : undefined}
-                      color={recTotal || grp ? 'var(--accent)' : (track?.color ?? cat?.color ?? 'var(--c-other)')}
-                      colors={grp ? members.map((m) => m?.color ?? 'var(--c-other)') : undefined}
-                      spent={spent}
-                      budget={b.amount}
-                      proj={proj}
-                      domainMax={domainMax}
-                      first={i === 0}
-                      elapsed={monthly ? elapsed : (yElapsed ?? 1)}
-                      covered={monthly ? coveredFrac : undefined}
-                      paceBasis={
-                        monthly
-                          ? paceBasis
-                          : year != null && yElapsed! > 0 && yElapsed! < 1
-                            ? `${daysBetween(`${year}-01-01`, today) + 1} days of ${year} (calendar)`
-                            : undefined
-                      }
-                      onOpen={() => goTxns(budgetDrill(b, cm))}
-                      expanded={openB === b.id}
-                      onToggle={() => setOpenB((cur) => (cur === b.id ? null : b.id))}
-                      onEdit={() => setDlg({ id: b.id })}
-                      canDelete
-                      onDelete={() => store.commit({ kind: 'delete', collection: 'budgets', ids: [b.id] }, { msg: 'Budget removed', undoable: true })}
-                    />
-                    {openB === b.id && (
-                      <BudgetDetail
-                        budget={b}
-                        mk={cm}
-                        onDrillPeriod={(key) =>
-                          // A month key drills that month; a year key drills the whole year.
-                          goTxns(
-                            key.length === 7
-                              ? { ...budgetDrill(b, key), from: `${key}-01`, to: `${key}-${String(daysInMonth(key)).padStart(2, '0')}` }
-                              : { ...budgetDrill(b, `${key}-01`), from: `${key}-01-01`, to: `${key}-12-31` },
-                          )
-                        }
-                        onDrillCategory={(categoryId) =>
-                          goTxns({ cat: categoryId, from: `${cm}-01`, to: `${cm}-${String(daysInMonth(cm)).padStart(2, '0')}` })
-                        }
+              {(() => {
+                const renderRow = (r: (typeof rows)[number], i: number) => {
+                  const { b, native } = r
+                  const rec = b.scope?.kind === 'recurring' ? b.scope : undefined
+                  // A recurring budget is cross-category ("Recurring", with a breakdown) unless it
+                  // targets one category (#12c), in which case it reads like an ordinary category row.
+                  const recTotal = rec && !rec.categoryId
+                  const grp = b.scope?.kind === 'group' ? b.scope : undefined
+                  const trackId = b.scope?.kind === 'tracking' ? b.scope.trackingId : undefined
+                  const track = trackId ? vault.trackings.find((tr) => tr.id === trackId) : undefined
+                  const cat = d.catById.get(b.categoryId)
+                  const members = grp ? grp.categoryIds.map((id) => d.catById.get(id)) : []
+                  const label = budgetScopeLabel(vault, b)
+                  const perMonth = monthlyEquivalent(b)
+                  // A budget summed above its native period says what it is per native window
+                  // ("monthly · €400/mo" on a quarter bar); a coarser one says its €/mo equivalent.
+                  const scaled = native !== null && PERIOD_MONTHS[native] < hzMonths
+                  const captionParts = [
+                    b.scope || scaled ? label : null,
+                    scaled ? `${fmt(b.amount)}/${PERIOD_SHORT[native]}` : null,
+                    perMonth != null ? `≈ ${fmt(perMonth)}/mo` : null,
+                  ].filter(Boolean)
+                  // Over the same window as the bar: a monthly row read at the quarter sums the quarter.
+                  const breakdown = recTotal ? recurringBreakdown(vault, rec.cadence, cm, rec.excludeCategoryIds, rb, scaled ? hz : undefined) : []
+                  return (
+                    <div key={b.id}>
+                      <BudgetRow
+                        cat={b.name ?? (recTotal ? 'Recurring' : grp ? groupTitle(members) : (track?.name ?? cat?.name ?? '—'))}
+                        caption={captionParts.length ? captionParts.join(' · ') : undefined}
+                        color={recTotal || grp ? 'var(--accent)' : (track?.color ?? cat?.color ?? 'var(--c-other)')}
+                        colors={grp ? members.map((m) => m?.color ?? 'var(--c-other)') : undefined}
+                        spent={r.spent}
+                        budget={r.amount}
+                        proj={r.proj}
+                        domainMax={domainMax}
+                        first={i === 0}
+                        elapsed={r.rowElapsed}
+                        covered={r.covered}
+                        paceBasis={r.basis}
+                        onOpen={() => goTxns(budgetDrill(b, cm, hz))}
+                        expanded={openB === b.id}
+                        onToggle={() => setOpenB((cur) => (cur === b.id ? null : b.id))}
+                        onEdit={() => setDlg({ id: b.id })}
+                        canDelete
+                        onDelete={() => store.commit({ kind: 'delete', collection: 'budgets', ids: [b.id] }, { msg: 'Budget removed', undoable: true })}
                       />
-                    )}
-                    {recTotal && breakdown.length > 0 && (
-                      <div data-testid="recurring-breakdown" style={{ padding: '4px 0 12px 18px', display: 'flex', flexDirection: 'column', gap: 6 }}>
-                        {breakdown.map((r) => {
-                          const rc = d.catById.get(r.categoryId)
-                          return (
-                            <div key={r.categoryId} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: 12 }}>
-                              <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
-                                <span style={{ width: 7, height: 7, borderRadius: 2, background: rc?.color ?? 'var(--c-other)' }} />
-                                <span style={{ color: MUT }}>{rc?.name ?? '—'}</span>
-                              </span>
-                              <span style={{ fontFamily: MONO, fontSize: 12, color: MUT }}>{fmt(r.spent)}</span>
-                            </div>
-                          )
-                        })}
+                      {openB === b.id && (
+                        <BudgetDetail
+                          budget={b}
+                          mk={cm}
+                          onDrillPeriod={(key) => {
+                            // Each history bar drills its own window — month, quarter, half or year.
+                            const bounds = periodKeyBounds(key)
+                            goTxns({ ...budgetDrill(b, bounds.from.slice(0, 7), hz), ...bounds })
+                          }}
+                          onDrillCategory={(categoryId) =>
+                            goTxns({ cat: categoryId, from: `${cm}-01`, to: `${cm}-${String(daysInMonth(cm)).padStart(2, '0')}` })
+                          }
+                        />
+                      )}
+                      {recTotal && breakdown.length > 0 && (
+                        <div data-testid="recurring-breakdown" style={{ padding: '4px 0 12px 18px', display: 'flex', flexDirection: 'column', gap: 6 }}>
+                          {breakdown.map((row) => {
+                            const rc = d.catById.get(row.categoryId)
+                            return (
+                              <div key={row.categoryId} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: 12 }}>
+                                <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
+                                  <span style={{ width: 7, height: 7, borderRadius: 2, background: rc?.color ?? 'var(--c-other)' }} />
+                                  <span style={{ color: MUT }}>{rc?.name ?? '—'}</span>
+                                </span>
+                                <span style={{ fontFamily: MONO, fontSize: 12, color: MUT }}>{fmt(row.spent)}</span>
+                              </div>
+                            )
+                          })}
+                        </div>
+                      )}
+                    </div>
+                  )
+                }
+                return (
+                  <>
+                    {mainRows.map(renderRow)}
+                    {longerRows.length > 0 && (
+                      <div data-testid="budget-longer">
+                        {/* Coarser budgets are never squeezed into an impossible finer bar — each
+                            paces against its own calendar window (Q3, H2, the year). */}
+                        <div style={{ fontFamily: MONO, fontSize: 10, color: FAINT, letterSpacing: '.06em', margin: '16px 0 2px' }}>
+                          LONGER HORIZONS
+                        </div>
+                        {longerRows.map((r, i) => renderRow(r, i + mainRows.length))}
                       </div>
                     )}
-                  </div>
+                  </>
                 )
-              })}
+              })()}
 
               {/*
                 The variance chart (Q124), retitled and moved BELOW the list. It used to sit
@@ -441,7 +524,7 @@ export function PlanScreen() {
               {offPlan.length > 0 && (
                 <div data-testid="budget-offplan" style={{ marginTop: 18, paddingTop: 14, borderTop: `1px solid var(--hair2)` }}>
                   <div style={{ fontFamily: MONO, fontSize: 10, color: FAINT, letterSpacing: '.06em', display: 'inline-flex', alignItems: 'center' }}>
-                    OFF PLAN THIS MONTH<Explain id="plan.movers" size="sm" />
+                    OFF PLAN · {win.label.toUpperCase()}<Explain id="plan.movers" size="sm" />
                   </div>
                   <div style={{ fontSize: 11.5, color: FAINT, margin: '3px 0 10px', lineHeight: 1.5 }}>
                     How far each budget is from its own limit — not what you spent. Biggest gap first.
@@ -507,7 +590,46 @@ export function PlanScreen() {
           {/* Q121 — "did I stay in budget last month?" is answerable on the screen that owns
               budgets. Forward stops at the current month: there is no plan for a month that
               has not happened. */}
-          <PeriodStepper value={cm} onChange={(v) => setCm(v)} testidPrefix="plan" narrow={narrow} thisMonth={thisMonth} />
+          <PeriodStepper
+            value={cm}
+            onChange={(v) => setCm(v)}
+            testidPrefix="plan"
+            narrow={narrow}
+            thisMonth={thisMonth}
+            stepMonths={PERIOD_MONTHS[hz]}
+            labelOf={hz === 'month' ? undefined : (v) => periodWindow(hz, v).label}
+            atCurrent={isCurrent}
+            unit={HZ_UNIT[hz]}
+          />
+          {/* The viewing horizon. A monthly budget rolls UP into a quarter/half/year view;
+              a coarser budget never renders as an impossible finer bar (minimum resolution). */}
+          <div data-testid="plan-horizon" style={{ display: 'inline-flex', border: `1px solid ${HAIR}`, borderRadius: 999, padding: 2 }}>
+            {(['month', 'quarter', 'half', 'year'] as const).map((h) => {
+              const on = h === hz
+              return (
+                <button
+                  key={h}
+                  data-testid={`plan-horizon-${h}`}
+                  aria-pressed={on}
+                  onClick={() => setHz(h)}
+                  style={{
+                    border: 'none',
+                    cursor: 'pointer',
+                    borderRadius: 999,
+                    padding: '3px 10px',
+                    fontFamily: MONO,
+                    fontSize: 10.5,
+                    letterSpacing: '0.06em',
+                    textTransform: 'uppercase',
+                    background: on ? INK : 'transparent',
+                    color: on ? SURFACE : MUT,
+                  }}
+                >
+                  {narrow ? HZ_LABEL[h].slice(0, 1) : HZ_LABEL[h]}
+                </button>
+              )
+            })}
+          </div>
           {/* Actions live behind a hairline so the stepper (with its "↩ today" chip) reads as
               one control and these as another. Bulk "from history" is a tab inside + Budget. */}
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, borderLeft: `1px solid ${HAIR}`, paddingLeft: 14 }}>
@@ -525,9 +647,9 @@ export function PlanScreen() {
               <span data-testid="plan-freshness">{fresh.label}</span>
             </>
           ) : (
-            // Neither figure applies to a finished month: elapsed is always 100%, and the
-            // freshness caption describes how current the vault is, not this month.
-            <span data-testid="plan-month-complete">month complete · actual against budget</span>
+            // Neither figure applies to a finished window: elapsed is always 100%, and the
+            // freshness caption describes how current the vault is, not this period.
+            <span data-testid="plan-month-complete">{HZ_UNIT[hz]} complete · actual against budget</span>
           )}
         </div>
       </div>

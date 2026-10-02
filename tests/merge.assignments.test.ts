@@ -174,8 +174,13 @@ describe('budget scope identity (ANALYTICS §6.2)', () => {
     v.budgets.push(b)
     return b
   }
-  const yearBudget = (v: Vault, id: string, cat: string, year: number, amount: number): Budget => {
-    const b: Budget = { id, updatedAt: now(), categoryId: catId(v, cat), amount, scope: { kind: 'category-year', categoryId: catId(v, cat), year } }
+  const periodBudget = (v: Vault, id: string, cat: string, period: 'quarter' | 'half' | 'year', amount: number): Budget => {
+    const b: Budget = { id, updatedAt: now(), categoryId: catId(v, cat), amount, scope: { kind: 'category-period', categoryId: catId(v, cat), period } }
+    v.budgets.push(b)
+    return b
+  }
+  const monthBudget = (v: Vault, id: string, cat: string, amount: number): Budget => {
+    const b: Budget = { id, updatedAt: now(), categoryId: catId(v, cat), amount }
     v.budgets.push(b)
     return b
   }
@@ -191,14 +196,25 @@ describe('budget scope identity (ANALYTICS §6.2)', () => {
     expect(conflicts.filter((c) => c.kind === 'dup-budget')).toHaveLength(1)
   })
 
-  it('category-year budgets for different years are NOT duplicates', () => {
+  it('category-period budgets at different periods are NOT duplicates — a monthly base and a quarterly cover coexist', () => {
     const base = buildVault()
     const local = structuredClone(base)
     const remote = structuredClone(base)
-    yearBudget(local, 'bud-a', 'Other', 2025, 4000)
-    yearBudget(remote, 'bud-b', 'Other', 2026, 4200)
+    monthBudget(local, 'bud-a', 'Other', 120)
+    periodBudget(remote, 'bud-b', 'Other', 'quarter', 400)
     const { merged, conflicts } = threeWayMerge(base, local, remote)
     expect(merged.budgets).toHaveLength(2)
     expect(conflicts.filter((c) => c.kind === 'dup-budget')).toHaveLength(0)
+  })
+
+  it('two category-period budgets at the SAME period are duplicates', () => {
+    const base = buildVault()
+    const local = structuredClone(base)
+    const remote = structuredClone(base)
+    periodBudget(local, 'bud-a', 'Other', 'year', 4000)
+    periodBudget(remote, 'bud-b', 'Other', 'year', 4200)
+    const { merged, conflicts } = threeWayMerge(base, local, remote)
+    expect(merged.budgets).toHaveLength(1)
+    expect(conflicts.filter((c) => c.kind === 'dup-budget')).toHaveLength(1)
   })
 })
