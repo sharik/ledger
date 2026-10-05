@@ -592,7 +592,8 @@ export function PlanScreen() {
               has not happened. */}
           <PeriodStepper
             value={cm}
-            onChange={(v) => setCm(v)}
+            // A coarser step from mid-window can overshoot today (June at Quarter, +3 = September).
+            onChange={(v) => setCm(v > thisMonth ? thisMonth : v)}
             testidPrefix="plan"
             narrow={narrow}
             thisMonth={thisMonth}

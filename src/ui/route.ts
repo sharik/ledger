@@ -38,10 +38,9 @@ export function parseHash(hash: string): Route {
   const qi = h.indexOf('?')
   const tabPart = qi === -1 ? h : h.slice(0, qi)
   const tab = (TABS as string[]).includes(tabPart) || tabPart === 'import' ? normalizeTab(tabPart as Tab) : 'dash'
-  const query: Record<string, string> = {}
-  if (qi !== -1) {
-    for (const [k, v] of new URLSearchParams(h.slice(qi + 1))) query[k] = v
-  }
+  // fromEntries defines own properties, so a "__proto__" key stays data instead of reaching the
+  // prototype setter (CodeQL js/remote-property-injection).
+  const query: Record<string, string> = qi === -1 ? {} : Object.fromEntries(new URLSearchParams(h.slice(qi + 1)))
   return { tab, query }
 }
 

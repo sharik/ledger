@@ -326,7 +326,8 @@ export function budgetPeriodHistory(
  * cost over the last `periods` COMPLETE native windows: months for a monthly budget, quarters
  * for a quarterly one, and so on. The current, partial window is never averaged in.
  *
- * Windows where the VAULT has no data at all are skipped rather than counted as €0, matching
+ * Windows where the VAULT has no data at all, or that start before its first month, are skipped
+ * rather than counted as €0 or as complete, matching
  * `trailingAvg` in selectors: a young vault's average must reflect the periods it really has. A
  * window the vault covers in which this scope simply cost nothing DOES count — that is a real €0.
  *
@@ -346,10 +347,18 @@ export function scopeTrailingAvg(
   if (native === null) return null
   const span = PERIOD_MONTHS[native]
   const cur = periodWindow(native, currentMk)
+  // A coarse window that starts before the vault does is only partly imported: one transaction in
+  // it is not coverage, and averaging it as complete understates the figure.
+  let firstMk: MonthKey | null = null
+  for (const t of vault.transactions) {
+    const m = t.date.slice(0, 7)
+    if (firstMk === null || m < firstMk) firstMk = m
+  }
   let sum = 0
   let n = 0
   for (let i = 1; i <= periods; i++) {
     const w = periodWindow(native, addMonths(cur.fromMk, -i * span))
+    if (firstMk === null || w.fromMk < firstMk) continue
     const covered = vault.transactions.some((t) => {
       const m = t.date.slice(0, 7)
       return m >= w.fromMk && m <= w.toMk

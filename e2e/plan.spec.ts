@@ -224,6 +224,24 @@ test.describe('the viewing horizon', () => {
     await page.getByTestId('plan-horizon-month').click()
     await expect(page).not.toHaveURL(/hz=/)
   })
+
+  // CodeRabbit review: a coarser step from mid-window could carry the month past today — June at
+  // Quarter is Q2, and "next" (+3) landed on September, which Month then showed as a real month.
+  test('stepping forward at a coarser horizon never lands past the current month', async ({ page }) => {
+    await setupVault(page)
+    await goTab(page, 'plan')
+    const current = await page.getByTestId('plan-month').innerText()
+
+    await page.getByTestId('plan-prev-month').click() // June — Q2, not the current quarter
+    await page.getByTestId('plan-horizon-quarter').click()
+    await page.getByTestId('plan-next-month').click()
+    await expect(page.getByTestId('plan-next-month')).toBeDisabled()
+
+    await page.getByTestId('plan-horizon-month').click()
+    await expect(page.getByTestId('plan-month')).toHaveText(current)
+    await expect(page.getByTestId('plan-next-month')).toBeDisabled()
+    await expect(page).not.toHaveURL(/mk=/)
+  })
 })
 
 test.describe('a budget explains itself', () => {

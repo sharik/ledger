@@ -20,6 +20,13 @@ describe('parseHash / formatHash', () => {
     expect(parseHash(h).query.merchant).toBe('Café & Co')
   })
 
+  // CodeQL js/remote-property-injection: hash keys are data, never property-setter calls.
+  it('carries a "__proto__" key as plain data and leaves the prototype alone', () => {
+    const q = parseHash('#/plan?__proto__=x&hz=quarter').query
+    expect(Object.keys(q)).toEqual(['__proto__', 'hz'])
+    expect(Object.getPrototypeOf(q)).toBe(Object.prototype)
+  })
+
   it('junk and empty hashes land on the dashboard', () => {
     expect(parseHash('').tab).toBe('dash')
     expect(parseHash('#').tab).toBe('dash')

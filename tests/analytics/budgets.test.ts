@@ -351,6 +351,22 @@ describe('scopeTrailingAvg', () => {
     expect(scopeTrailingAvg(v, perTrip, 6, '2026-07')).toBeNull()
   })
 
+  // CodeRabbit review: one transaction anywhere in a coarse window marked it covered, so a year the
+  // vault holds only two months of was averaged as a full year — about a sixth of the real figure.
+  it('skips a coarse window that starts before the vault’s first month', () => {
+    const v = buildVault()
+    const gid = catId(v, 'Shopping')
+    txn(v, '2025-11-10', 'A', 'Shopping', -100) // the vault starts mid-Q4 / late in 2025
+    txn(v, '2025-12-10', 'B', 'Shopping', -100)
+    txn(v, '2026-02-10', 'C', 'Shopping', -300) // Q1 2026, fully inside the vault's span
+    txn(v, '2026-04-10', 'D', 'Groceries', -50) // Q2 2026 is covered; Shopping really cost €0 in it
+    const annual = { id: 'y', updatedAt: now(), categoryId: gid, amount: 4000, scope: { kind: 'category-period' as const, categoryId: gid, period: 'year' as const } }
+    expect(scopeTrailingAvg(v, annual, 3, '2026-07')).toBeNull() // 2025 is not a complete year here
+    const quarterly = { id: 'q', updatedAt: now(), categoryId: gid, amount: 300, scope: { kind: 'category-period' as const, categoryId: gid, period: 'quarter' as const } }
+    // Q1 2026 (300) and Q2 2026 (0) count; Q4 2025 began in October, before the vault did.
+    expect(scopeTrailingAvg(v, quarterly, 3, '2026-07')).toBe(150)
+  })
+
   it('averages a group by its own scope, not by any one member', () => {
     const v = buildVault()
     txn(v, '2026-06-03', 'A', 'Dining out', -100)
