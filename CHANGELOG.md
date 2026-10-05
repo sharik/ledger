@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.3.0](https://github.com/sharik/ledger/compare/v0.2.0...v0.3.0) (2026-10-05)
+
+
+### Features
+
+* **budgets:** native budget periods (month/quarter/half/year) and a Plan horizon switcher ([#26](https://github.com/sharik/ledger/issues/26)) ([2c42631](https://github.com/sharik/ledger/commit/2c4263173182aff2a1dd46520b9941e283909b5d))
+
 ## [0.2.0](https://github.com/sharik/ledger/compare/v0.1.1...v0.2.0) (2026-08-04)
 
 
