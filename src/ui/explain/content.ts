@@ -127,16 +127,17 @@ export const EXPLAIN = {
     hint: 'Budgets running over pace, and goals with no date they would reach their target.',
     what: 'A two-line read on the plan you set: budgets first, then goals.',
     how:
-      'A budget is "over pace" when its spend so far, extrapolated at the current daily rate to ' +
-      'the end of the month, would land above its amount — not when it has already been passed. ' +
-      'That rate divides by the days your imported statements cover, not by the days of the month ' +
-      'that have passed, so a gap in your imports cannot make a budget look comfortable. ' +
-      'A goal is "behind" when its contributions or balance trajectory produce no date that ' +
-      'reaches the target at all.',
+      'Each budget is checked inside its own period — month, quarter, half-year or calendar ' +
+      'year — and is "over pace" when its spend so far, extrapolated at the current daily rate ' +
+      'to the end of that period, would land above its amount — not when it has already been ' +
+      'passed. A monthly rate divides by the days your imported statements cover, not by the ' +
+      'days of the month that have passed, so a gap in your imports cannot make a budget look ' +
+      'comfortable; coarser periods pace by the calendar. A goal is "behind" when its ' +
+      'contributions or balance trajectory produce no date that reaches the target at all.',
     excludes: [
       'Budgets and goals you have not set up — an empty plan says so, rather than reporting that it is being met',
       'Archived goals',
-      'Annual, per-trip and recurring-scoped budgets are counted here as if monthly; the Plan screen holds them out of its roll-up instead',
+      'Per-trip budgets — a trip\'s span is not a calendar period; the summary names how many were not checked',
     ],
     next: [{ label: 'Open Plan', tab: 'plan' }],
     q: [115, 116, 118, 190],
@@ -356,13 +357,13 @@ export const EXPLAIN = {
     what: 'How much of this budget you have spent, and where you are on pace to land.',
     how:
       'Spent is derived from your transactions every time you look — never stored — so an import can ' +
-      'never leave a budget stale. The dashed marker is the month-end projection, and it divides by the ' +
-      'days your imported statements actually cover, not by the days of the month that have passed: a ' +
+      'never leave a budget stale. The dashed marker is the projection to the end of the period shown, and it ' +
+      'divides by the days your imported statements actually cover, not by the days of that period that have passed: a ' +
       'rate has to be measured over the window the spending was measured over. It needs at least 3 days ' +
       'before it appears.',
     excludes: [
       'All bars on this screen share one horizontal scale, so a short bar can mean a small budget rather than careful spending',
-      'A row with a year scope (annual, or yearly recurring) counts a calendar year: its caption shows the ≈ €/mo equivalent of the yearly amount, its "today" marker sits at the fraction of that year already gone (calendar days, not statement coverage), and its dashed marker is a year-end pace. A per-trip row counts its trip and has no marker at all.',
+      'A row under Longer horizons — a quarterly, half-year or yearly budget viewed over a shorter period — counts its own calendar period: its caption shows the ≈ €/mo equivalent, its "today" marker sits at the fraction of that period already gone (calendar days, not statement coverage), and its dashed marker is a pace to that period\'s end. A per-trip row counts its trip and has no marker at all.',
       'Charges you have not imported yet. When your statements stop before today, a dotted "data" marker shows where they stop — everything to the right of it is missing from the bar, not spent.',
     ],
     next: [{ label: 'Open this category’s transactions', tab: 'txns' }],
@@ -372,16 +373,19 @@ export const EXPLAIN = {
   'plan.rollup': {
     screen: 'Plan',
     title: 'All budgets',
-    hint: 'Monthly budgets only, with each transaction counted once.',
-    what: 'Your monthly budgets added together, against what you have spent.',
+    hint: 'Every budget that fits the period shown, with each transaction counted once.',
+    what: 'Your budgets added together for the month, quarter, half-year or year shown, against what you have spent.',
     how:
-      'Every budget whose scope covers the month shown: plain monthly budgets, monthly recurring budgets ' +
-      'that name a category, and budgets over several categories. Budgets are allowed to overlap, so the ' +
-      'spend figure adds up the TRANSACTIONS they cover rather than the budgets — a charge inside two of ' +
-      'them counts once. On the plan side, a budget sitting entirely inside a wider one is a limit within ' +
-      'that budget, not extra plan, so only the outermost amounts are added.',
+      'Every budget whose own period fits inside the one you are viewing: at Month, the monthly budgets; at ' +
+      'Quarter, the monthly and quarterly ones; and so on up to Year. A budget with a shorter period is ' +
+      'scaled up to the one shown — a monthly amount counts three times over a quarter. Budgets are allowed ' +
+      'to overlap, so the spend figure adds up the TRANSACTIONS they cover rather than the budgets — a charge ' +
+      'inside two of them counts once. On the plan side, a budget sitting entirely inside a wider one is a ' +
+      'limit within that budget, not extra plan, so only the outermost amounts are added; when two cover ' +
+      'exactly the same spending, the one with the shorter period is the limit inside the other.',
     excludes: [
-      'Annual and per-trip budgets — they cover a different period, so adding them into a monthly total would be a lie. They are listed separately as memo lines; the memo\'s "(≈ €X/mo)" is the annual amount ÷ 12, shown for reading only and never added into the total.',
+      'Budgets with a longer period than the one shown — a yearly budget at Month or Quarter, a half-year one at Quarter. Adding them into a shorter total would be a lie, so they are listed under Longer horizons and summed in a memo line; the memo\'s "(≈ €X/mo)" adds up each one\'s monthly equivalent (its amount divided by the months in its period), shown for reading only and never added into the total.',
+      'Per-trip budgets — a trip is not a calendar period, so it is a memo line too',
       'A recurring budget that spans all categories: it is an overlay across every category rather than a period of its own, so it is a memo line too',
       'Nothing is dropped for overlapping. If two budgets share a category and neither is inside the other, both amounts are counted and the screen says so — that plan really is ambiguous.',
     ],

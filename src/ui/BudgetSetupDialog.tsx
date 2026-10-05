@@ -2,21 +2,25 @@
 //
 // The engine proposes, this dialog lets the user dispose: every row is prefilled from what the
 // category actually cost, every amount is editable, every row can be left out — and every row
-// can be SWITCHED between /mo and /yr, showing the real suggested figure for each period (the
-// monthly one is the exact number BudgetDialog's own 6-month chip states; the yearly one is the
-// trailing-12-complete-month total). Apply lands the whole set as ONE batch op — one toast, one
-// undo. Nothing is stored until Apply; closing forgets.
+// can be SWITCHED between /mo, /qr, /half and /yr, showing the real suggested figure for each
+// period (the monthly one is the exact number BudgetDialog's own 6-month chip states; the
+// coarser ones are run rates over the scanned complete months). The default period is the
+// rhythm the engine detected — insurance paid quarterly lands as a quarterly budget. Apply
+// lands the whole set as ONE batch op — one toast, one undo. Nothing is stored until Apply;
+// closing forgets.
 //
 // The overlay mechanics (portal, Escape, focus restore) are BudgetDialog's, which took them
 // from ChartCard's fullscreen dialog.
 import { useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
-import { proposeBudgets, proposalProbe, proposalYear, type BudgetProposal } from '../analytics/budgetPropose'
+import { proposeBudgets, proposalProbe, proposalFigure, type BudgetProposal } from '../analytics/budgetPropose'
+import { PERIOD_MONTHS, type BudgetPeriod } from '../analytics/budgets'
 import type { Op } from '../model/mutations'
 import { budgetKey } from '../model/types'
 import { currentMonthKey } from '../model/selectors'
 import { useDerived, useStore, useStoreState } from './store'
 import { useRateBook } from './fxCtx'
+import { useAssistantOptional } from './assistant/ctx'
 import { BudgetDialogTabs } from './BudgetDialog'
 import { BG, FAINT, HAIR, INK, MONO, MUT, SURFACE, SURFACE2, fmt } from './theme'
 
@@ -29,25 +33,27 @@ const CADENCE_WORD = {
   yearly: 'about yearly',
 } as const
 
-type Period = 'monthly' | 'annual'
+const PERIOD_SHORT: Record<BudgetPeriod, string> = { month: 'mo', quarter: 'qr', half: 'half', year: 'yr' }
+const PERIOD_WORD: Record<BudgetPeriod, string> = { month: 'monthly', quarter: 'quarterly', half: 'half-yearly', year: 'yearly' }
+const ALL_PERIODS: BudgetPeriod[] = ['month', 'quarter', 'half', 'year']
 
 interface RowState {
   on: boolean
-  kind: Period
+  period: BudgetPeriod
   amount: string
 }
 
 /** The suggested figure for a proposal at a period — what the amount field resets to on switch. */
-const suggestedAt = (p: BudgetProposal, kind: Period): number | null => (kind === 'monthly' ? p.monthly : p.annual)
+const suggestedAt = (p: BudgetProposal, period: BudgetPeriod): number | null => proposalFigure(p, period)
 
 /** The op a reviewed row commits — the same shapes BudgetDialog saves, minted in bulk. */
-function toAddBudgetOp(p: BudgetProposal, kind: Period, amount: number, year: number): Op {
-  if (kind === 'monthly') return { kind: 'addBudget', categoryId: p.categoryId, amount }
+function toAddBudgetOp(p: BudgetProposal, period: BudgetPeriod, amount: number): Op {
+  if (period === 'month') return { kind: 'addBudget', categoryId: p.categoryId, amount }
   return {
     kind: 'addBudget',
     categoryId: p.categoryId,
     amount,
-    scope: { kind: 'category-year', categoryId: p.categoryId, year },
+    scope: { kind: 'category-period', categoryId: p.categoryId, period },
   }
 }
 
@@ -60,8 +66,8 @@ export function BudgetSetupDialog({ onClose, onOneBudget }: {
   const { vault } = useStoreState()
   const d = useDerived()
   const rb = useRateBook()
+  const assistant = useAssistantOptional()
   const cm = currentMonthKey()
-  const year = proposalYear(cm)
 
   // Computed ONCE on open — the review is a stable worksheet, not a live preview. A sync merge
   // landing mid-review must not reshuffle rows under the user's cursor; Apply re-checks against
@@ -72,17 +78,17 @@ export function BudgetSetupDialog({ onClose, onOneBudget }: {
   // row's ADD toggles it into the set; "Add all" covers the bulk case.
   const [rows, setRows] = useState<Record<string, RowState>>(() =>
     Object.fromEntries(
-      result.proposals.map((p) => [p.categoryId, { on: false, kind: p.kind, amount: String(suggestedAt(p, p.kind)) }]),
+      result.proposals.map((p) => [p.categoryId, { on: false, period: p.period, amount: String(suggestedAt(p, p.period)) }]),
     ),
   )
   const setRow = (id: string, patch: Partial<RowState>) =>
     setRows((cur) => ({ ...cur, [id]: { ...cur[id]!, ...patch } }))
   const setAll = (on: boolean) =>
     setRows((cur) => Object.fromEntries(Object.entries(cur).map(([id, r]) => [id, { ...r, on }])))
-  const switchPeriod = (p: BudgetProposal, kind: Period) => {
+  const switchPeriod = (p: BudgetProposal, period: BudgetPeriod) => {
     // Switching resets the amount to that period's suggestion — the point of the switch is to
     // SEE the other period's number, and a stale hand-edit would silently masquerade as it.
-    setRow(p.categoryId, { kind, amount: String(suggestedAt(p, kind)) })
+    setRow(p.categoryId, { period, amount: String(suggestedAt(p, period)) })
   }
 
   const openerRef = useRef<Element | null>(null)
@@ -101,11 +107,15 @@ export function BudgetSetupDialog({ onClose, onOneBudget }: {
   // Which period is unavailable per category: no figure to suggest, or that exact budget
   // already exists (its key is taken, and applying would be tombstoned by the next merge).
   const takenNow = new Set(vault.budgets.map(budgetKey))
-  const periodBlocked = (p: BudgetProposal, kind: Period): string | null => {
-    if (suggestedAt(p, kind) == null)
-      return kind === 'annual' ? 'Needs a full year of complete months' : 'Nothing to average in the last 6 months'
-    if (takenNow.has(budgetKey(proposalProbe({ categoryId: p.categoryId, kind }, cm))))
-      return kind === 'annual' ? `Already has a ${year} annual budget` : 'Already has a monthly budget'
+  const periodBlocked = (p: BudgetProposal, period: BudgetPeriod): string | null => {
+    if (suggestedAt(p, period) == null)
+      return period === 'month'
+        ? 'Nothing to average in the last 6 months'
+        : period === 'quarter'
+          ? 'Needs at least 6 complete months'
+          : 'Needs a full year of complete months'
+    if (takenNow.has(budgetKey(proposalProbe({ categoryId: p.categoryId, period }))))
+      return `Already has a ${PERIOD_WORD[period]} budget`
     return null
   }
 
@@ -123,9 +133,9 @@ export function BudgetSetupDialog({ onClose, onOneBudget }: {
         ? 'Enter an amount for every added budget (0 is allowed — it tracks the category without a limit).'
         : null
 
-  const kindOf = (p: BudgetProposal): Period => rows[p.categoryId]?.kind ?? p.kind
-  const monthlyTotal = included.filter((p) => kindOf(p) === 'monthly' && amountOk(p)).reduce((a, p) => a + amountOf(p), 0)
-  const annualTotal = included.filter((p) => kindOf(p) === 'annual' && amountOk(p)).reduce((a, p) => a + amountOf(p), 0)
+  const periodOf = (p: BudgetProposal): BudgetPeriod => rows[p.categoryId]?.period ?? p.period
+  const totalAt = (period: BudgetPeriod) =>
+    included.filter((p) => periodOf(p) === period && amountOk(p)).reduce((a, p) => a + amountOf(p), 0)
 
   const apply = () => {
     if (problem) return
@@ -133,8 +143,8 @@ export function BudgetSetupDialog({ onClose, onOneBudget }: {
     // budgets while this dialog sat open, and a clash would be tombstoned by the next merge.
     const taken = new Set(vault.budgets.map(budgetKey))
     const ops = included
-      .filter((p) => !taken.has(budgetKey(proposalProbe({ categoryId: p.categoryId, kind: kindOf(p) }, cm))))
-      .map((p) => toAddBudgetOp(p, kindOf(p), amountOf(p), year))
+      .filter((p) => !taken.has(budgetKey(proposalProbe({ categoryId: p.categoryId, period: periodOf(p) }))))
+      .map((p) => toAddBudgetOp(p, periodOf(p), amountOf(p)))
     if (ops.length > 0) {
       store.commit({ kind: 'batch', ops }, { msg: `${ops.length} budget${ops.length === 1 ? '' : 's'} added`, undoable: true })
     }
@@ -187,20 +197,23 @@ export function BudgetSetupDialog({ onClose, onOneBudget }: {
           {result.proposals.map((p, i) => {
             const row = rows[p.categoryId]!
             const cat = d.catById.get(p.categoryId)
-            // The /yr equivalent reads off the row's LIVE amount (edits update it), never
-            // p.monthly — that is an independent 6-month mean, not the total ÷ 12.
-            const perMonth = row.kind === 'annual' && amountOk(p) && Number(row.amount) > 0 ? ` · ≈ ${fmt(Number(row.amount) / 12)}/mo` : ''
+            // The /mo equivalent reads off the row's LIVE amount (edits update it), never
+            // p.monthly — that is an independent 6-month mean, not the total ÷ N.
+            const perMonth =
+              row.period !== 'month' && amountOk(p) && Number(row.amount) > 0
+                ? ` · ≈ ${fmt(Number(row.amount) / PERIOD_MONTHS[row.period])}/mo`
+                : ''
             const caption =
-              row.kind === 'monthly'
+              row.period === 'month'
                 ? `6-month average · spend in ${p.monthsWithSpend} of ${result.monthsCovered} months`
                 : p.mixed
-                  ? `last 12 months · steady base + ${CADENCE_WORD[p.cadence]} lumps${perMonth}`
-                  : `paid ${CADENCE_WORD[p.cadence]} · last 12 months · ${year} annual${perMonth}`
+                  ? `steady base + ${CADENCE_WORD[p.cadence]} lumps · suggested per ${PERIOD_WORD[row.period]}${perMonth}`
+                  : `paid ${CADENCE_WORD[p.cadence]} · suggested per ${PERIOD_WORD[row.period]}${perMonth}`
             return (
               <div
                 key={p.categoryId}
                 data-testid="budget-setup-row"
-                data-kind={row.kind}
+                data-period={row.period}
                 data-cat={catName(p.categoryId)}
                 data-on={row.on ? '1' : '0'}
                 style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 14px', borderTop: i === 0 ? 'none' : `1px solid ${HAIR}`, background: row.on ? SURFACE2 : undefined }}
@@ -232,7 +245,7 @@ export function BudgetSetupDialog({ onClose, onOneBudget }: {
                   </div>
                   <div style={{ fontSize: 11, color: FAINT, marginTop: 3 }}>
                     {caption}
-                    {row.kind === 'monthly' && p.median != null && (
+                    {row.period === 'month' && p.median != null && (
                       <>
                         {' · '}
                         <button
@@ -256,9 +269,9 @@ export function BudgetSetupDialog({ onClose, onOneBudget }: {
                     style={{ ...inputStyle, width: 90, fontFamily: MONO, textAlign: 'right' as const }}
                   />
                   <span style={{ display: 'inline-flex', border: `1px solid ${HAIR}`, borderRadius: 5, overflow: 'hidden' }}>
-                    {(['monthly', 'annual'] as const).map((k) => {
+                    {ALL_PERIODS.map((k) => {
                       const blocked = periodBlocked(p, k)
-                      const active = row.kind === k
+                      const active = row.period === k
                       return (
                         <button
                           key={k}
@@ -266,7 +279,7 @@ export function BudgetSetupDialog({ onClose, onOneBudget }: {
                           data-period={k}
                           aria-pressed={active}
                           disabled={blocked != null}
-                          title={blocked ?? (k === 'monthly' ? `Suggested: ${fmt(p.monthly ?? 0)}/mo` : `Suggested: ${fmt(p.annual ?? 0)}/yr`)}
+                          title={blocked ?? `Suggested: ${fmt(suggestedAt(p, k) ?? 0)}/${PERIOD_SHORT[k]}`}
                           onClick={() => !active && switchPeriod(p, k)}
                           style={{
                             fontFamily: MONO,
@@ -278,7 +291,7 @@ export function BudgetSetupDialog({ onClose, onOneBudget }: {
                             color: blocked != null ? HAIR : active ? SURFACE : MUT,
                           }}
                         >
-                          {k === 'monthly' ? '/mo' : '/yr'}
+                          /{PERIOD_SHORT[k]}
                         </button>
                       )
                     })}
@@ -316,8 +329,12 @@ export function BudgetSetupDialog({ onClose, onOneBudget }: {
             Add {included.length} budget{included.length === 1 ? '' : 's'}
           </button>
           <span data-testid="budget-setup-total" style={{ fontFamily: MONO, fontSize: 11.5, color: MUT }}>
-            {/* An annual-only set has no monthly figure worth stating — "€0/mo +" is noise. */}
-            {[monthlyTotal > 0 || annualTotal === 0 ? `${fmt(monthlyTotal)}/mo` : '', annualTotal > 0 ? `${fmt(annualTotal)}/yr` : ''].filter(Boolean).join(' + ')}
+            {/* Only the periods actually in the set — "€0/qr +" would be noise. The monthly
+                figure stays when the whole set is empty so the line never goes blank. */}
+            {ALL_PERIODS.map((k) => ({ k, total: totalAt(k) }))
+              .filter(({ k, total }) => total > 0 || (k === 'month' && ALL_PERIODS.every((x) => totalAt(x) === 0)))
+              .map(({ k, total }) => `${fmt(total)}/${PERIOD_SHORT[k]}`)
+              .join(' + ')}
             {result.typicalIncome > 0 ? ` · typical monthly income ${fmt(result.typicalIncome)}` : ''}
           </span>
           {problem && <span data-testid="budget-setup-problem" style={{ fontSize: 12, color: MUT }}>{problem}</span>}
@@ -340,10 +357,25 @@ export function BudgetSetupDialog({ onClose, onOneBudget }: {
             <h1 style={{ margin: '4px 0 0', fontSize: 22, fontWeight: 600, color: INK }}>Budgets from your history</h1>
             <div style={{ fontSize: 12.5, color: FAINT, marginTop: 4, maxWidth: 480 }}>
               Suggested from your complete months — the numbers are yours to change, and nothing is
-              created until you apply. Pick the ones you want with Add; each row can be a monthly or
-              a yearly budget, and switching shows that period’s own figure. Categories paid in
-              lumps default to yearly.
+              created until you apply. Pick the ones you want with Add; each row can be a monthly,
+              quarterly, half-yearly or yearly budget, and switching shows that period’s own figure.
+              Categories paid in lumps default to the rhythm they were paid at.
             </div>
+            {assistant && vault.settings.assist?.chat && (
+              <button
+                data-testid="budget-setup-ask-assistant"
+                onClick={() => {
+                  onClose()
+                  assistant.setOpen(true)
+                  assistant.send(
+                    'Look at my spending rhythm and suggest a set of budgets — monthly, quarterly, half-yearly or yearly per category, as the spending warrants.',
+                  )
+                }}
+                style={{ fontSize: 12, color: 'var(--accent)', background: 'none', border: 'none', padding: 0, marginTop: 8, cursor: 'pointer' }}
+              >
+                Ask the assistant instead →
+              </button>
+            )}
           </div>
           <button
             data-testid="budget-setup-cancel"

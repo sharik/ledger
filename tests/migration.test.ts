@@ -424,3 +424,60 @@ describe('migration 4 → 5 (assistant skills)', () => {
     expect(migrate(schema1Vault()).skills).toEqual([])
   })
 })
+
+/**
+ * 7 → 8: evergreen budget periods. `category-year {year}` → `category-period {period:'year'}`,
+ * `group.year` → `group.period:'year'` — the pinned year drops, and where two pinned years now
+ * share one key, the HIGHEST year survives and the rest tombstone, decided in the migration so
+ * the outcome is year-aware and deterministic rather than `updatedAt`-ordered in the merge.
+ */
+describe('migration 7 → 8 (evergreen budget periods)', () => {
+  const schema7Vault = (budgets: Vault['budgets']): Vault => {
+    const v = migrate(schema1Vault())
+    return { ...v, schema: 7, budgets } as Vault
+  }
+  const ts = '2026-01-01T00:00:00.000Z'
+
+  it('converts category-year and group-with-year to evergreen period scopes', () => {
+    const v = migrate(
+      schema7Vault([
+        { id: 'b1', updatedAt: ts, categoryId: 'cat-a', amount: 2400, scope: { kind: 'category-year', categoryId: 'cat-a', year: 2026 } as unknown as Vault['budgets'][number]['scope'] },
+        { id: 'b2', updatedAt: ts, categoryId: CAT_TRANSFERS, amount: 4800, name: 'Fun', scope: { kind: 'group', categoryIds: ['cat-a', 'cat-b'], year: 2026 } as unknown as Vault['budgets'][number]['scope'] },
+        { id: 'b3', updatedAt: ts, categoryId: 'cat-a', amount: 100 }, // legacy monthly untouched
+        { id: 'b4', updatedAt: ts, categoryId: CAT_TRANSFERS, amount: 200, name: 'Fun M', scope: { kind: 'group', categoryIds: ['cat-c'] } }, // monthly group untouched
+      ]),
+    )
+    expect(v.schema).toBe(SCHEMA_VERSION)
+    expect(v.budgets.find((b) => b.id === 'b1')!.scope).toEqual({ kind: 'category-period', categoryId: 'cat-a', period: 'year' })
+    expect(v.budgets.find((b) => b.id === 'b2')!.scope).toEqual({ kind: 'group', categoryIds: ['cat-a', 'cat-b'], period: 'year' })
+    expect(v.budgets.find((b) => b.id === 'b3')!.scope).toBeUndefined()
+    expect(v.budgets.find((b) => b.id === 'b4')!.scope).toEqual({ kind: 'group', categoryIds: ['cat-c'] })
+    // updatedAt untouched: both devices migrate identically, so field-LWW sees equal values.
+    expect(v.budgets.find((b) => b.id === 'b1')!.updatedAt).toBe(ts)
+  })
+
+  it('two pinned years on one category collapse to the later year, the loser tombstoned', () => {
+    const v = migrate(
+      schema7Vault([
+        { id: 'b-old', updatedAt: '2026-02-01T00:00:00.000Z', categoryId: 'cat-a', amount: 2000, scope: { kind: 'category-year', categoryId: 'cat-a', year: 2025 } as unknown as Vault['budgets'][number]['scope'] },
+        { id: 'b-new', updatedAt: ts, categoryId: 'cat-a', amount: 2400, scope: { kind: 'category-year', categoryId: 'cat-a', year: 2026 } as unknown as Vault['budgets'][number]['scope'] },
+      ]),
+    )
+    expect(v.budgets).toHaveLength(1)
+    expect(v.budgets[0]!.id).toBe('b-new') // the LATER year wins, not the later updatedAt
+    expect(v.tombstones.some((t) => t.id === 'b-old' && t.collection === 'budgets')).toBe(true)
+  })
+
+  it('is idempotent and deterministic', () => {
+    const make = () =>
+      schema7Vault([
+        { id: 'b1', updatedAt: ts, categoryId: 'cat-a', amount: 2400, scope: { kind: 'category-year', categoryId: 'cat-a', year: 2026 } as unknown as Vault['budgets'][number]['scope'] },
+        { id: 'b2', updatedAt: ts, categoryId: 'cat-a', amount: 2000, scope: { kind: 'category-year', categoryId: 'cat-a', year: 2025 } as unknown as Vault['budgets'][number]['scope'] },
+      ])
+    const once = migrate(make())
+    expect(stableStringify(migrate({ ...structuredClone(once), schema: 7 } as Vault))).toBe(
+      stableStringify({ ...once, tombstones: [...once.tombstones] }),
+    )
+    expect(stableStringify(migrate(make()))).toBe(stableStringify(migrate(make())))
+  })
+})

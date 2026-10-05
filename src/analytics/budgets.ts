@@ -1,8 +1,10 @@
 // Budget scope arithmetic (ANALYTICS §6.2, Phase F). A budget's `spent` depends on
-// its scope: legacy = one month of a category; category-year = a full calendar
-// year of a category; tracking = the lifetime spend of a tracking's members.
-// Always derived, never stored.
-import type { Budget, MonthKey, Transaction, Vault } from '../model/types'
+// its scope and its NATIVE PERIOD: legacy = one month of a category; category-period =
+// a calendar quarter/half-year/year of a category, evergreen (the window containing the
+// viewed month, never a stored year); tracking = the lifetime spend of a tracking's
+// members. A budget can additionally be READ at any horizon coarser than its native
+// period (`budgetSpentAt`/`budgetAmountAt`) — never finer. Always derived, never stored.
+import type { Budget, DateStr, MonthKey, Transaction, Vault } from '../model/types'
 import { budgetCategoryIds } from '../model/types'
 import { addMonths, round2, vaultOnlyBook } from '../model/selectors'
 import { members } from '../model/trackings'
@@ -18,48 +20,135 @@ export interface ScopeInfo {
   periodLabel: string // e.g. 'Jul' · '2026' · trip name
 }
 
+/** The four budget periods — exactly these, calendar-aligned (Q1=Jan–Mar, H1=Jan–Jun). */
+export type BudgetPeriod = 'month' | 'quarter' | 'half' | 'year'
+
+export const PERIOD_MONTHS: Record<BudgetPeriod, number> = { month: 1, quarter: 3, half: 6, year: 12 }
+
+const MON = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+
+const pad2 = (n: number): string => String(n).padStart(2, '0')
+
+const daysInMk = (mk: MonthKey): number =>
+  new Date(Date.UTC(Number(mk.slice(0, 4)), Number(mk.slice(5, 7)), 0)).getUTCDate()
+
+export interface PeriodWindow {
+  fromMk: MonthKey
+  toMk: MonthKey // inclusive
+  from: DateStr
+  to: DateStr // last day of toMk — inclusive, for drill filters
+  /** '2026-07' · '2026-Q3' · '2026-H2' · '2026' — round-trips through `periodKeyBounds`. */
+  key: string
+  /** 'Jul 2026' · 'Q3 2026' · 'H2 2026' · '2026'. */
+  label: string
+}
+
+/** The calendar-aligned window of `period` containing `mk`. */
+export function periodWindow(period: BudgetPeriod, mk: MonthKey): PeriodWindow {
+  const y = Number(mk.slice(0, 4))
+  const m = Number(mk.slice(5, 7))
+  const span = PERIOD_MONTHS[period]
+  const start = Math.floor((m - 1) / span) * span + 1
+  const fromMk = `${y}-${pad2(start)}`
+  const toMk = addMonths(fromMk, span - 1)
+  const key =
+    period === 'month' ? mk
+    : period === 'quarter' ? `${y}-Q${(start - 1) / 3 + 1}`
+    : period === 'half' ? `${y}-H${start < 7 ? 1 : 2}`
+    : String(y)
+  const label =
+    period === 'month' ? `${MON[m - 1]} ${y}`
+    : period === 'year' ? String(y)
+    : `${key.slice(5)} ${y}`
+  return { fromMk, toMk, from: `${fromMk}-01`, to: `${toMk}-${pad2(daysInMk(toMk))}`, key, label }
+}
+
+/** Inverse of `periodWindow().key` — the drill filter's date bounds. */
+export function periodKeyBounds(key: string): { from: DateStr; to: DateStr } {
+  const p = key.match(/^(\d{4})-([QH])([1-4])$/)
+  const anchor: { period: BudgetPeriod; mk: MonthKey } = p
+    ? p[2] === 'Q'
+      ? { period: 'quarter', mk: `${p[1]}-${pad2((Number(p[3]) - 1) * 3 + 1)}` }
+      : { period: 'half', mk: `${p[1]}-${pad2(p[3] === '1' ? 1 : 7)}` }
+    : /^\d{4}$/.test(key)
+      ? { period: 'year', mk: `${key}-01` }
+      : { period: 'month', mk: key }
+  const w = periodWindow(anchor.period, anchor.mk)
+  return { from: w.from, to: w.to }
+}
+
 /**
- * The test a transaction must pass to be charged against this budget in the viewed period.
- *
- * One matcher for every scope, so `budgetScopeSpent` and `budgetScopeTxns` cannot drift — and
- * so the roll-up can ask *which* transactions a budget covers rather than only *how much*.
- * That is what lets it count a transaction two budgets both match exactly once.
+ * The period a budget natively measures — the finest horizon it may honestly be shown at
+ * (minimum resolution: view native or coarser, never finer). `null` for a tracking budget:
+ * a trip's span is not a calendar period.
  */
-export function budgetMatcher(vault: Vault, budget: Budget, mk: MonthKey): (t: Transaction) => boolean {
+export function budgetNativePeriod(budget: Budget): BudgetPeriod | null {
+  const s = budget.scope
+  if (!s) return 'month'
+  if (s.kind === 'category-period') return s.period
+  if (s.kind === 'group') return s.period ?? 'month'
+  if (s.kind === 'recurring') return s.cadence === 'yearly' ? 'year' : 'month'
+  return null
+}
+
+/**
+ * The scope's criteria applied inside a month-key window — the shared core of the native
+ * matcher and the coarser-horizon reads, so the two can never disagree about which rows a
+ * budget covers. Tracking ignores the window: membership IS the span.
+ */
+function budgetMatcherIn(
+  vault: Vault,
+  budget: Budget,
+  fromMk: MonthKey,
+  toMk: MonthKey,
+): (t: Transaction) => boolean {
   const scope = budget.scope
-  if (!scope) {
-    // legacy: this category, this month
-    const cat = budget.categoryId
-    return (t) => t.categoryId === cat && t.date.slice(0, 7) === mk
+  const inWindow = (t: Transaction) => {
+    const m = t.date.slice(0, 7)
+    return m >= fromMk && m <= toMk
   }
-  if (scope.kind === 'category-year') {
-    const yr = String(scope.year)
+  if (!scope) {
+    const cat = budget.categoryId
+    return (t) => t.categoryId === cat && inWindow(t)
+  }
+  if (scope.kind === 'category-period') {
     const cat = scope.categoryId
-    return (t) => t.categoryId === cat && t.date.slice(0, 4) === yr
+    return (t) => t.categoryId === cat && inWindow(t)
   }
   if (scope.kind === 'recurring') {
     // Recurring spend of this cadence. When `categoryId` is set, only that category
     // (#12c); otherwise cross-category minus the excluded categories.
     const excl = new Set(scope.excludeCategoryIds ?? [])
-    const period = scope.cadence === 'yearly' ? mk.slice(0, 4) : mk
-    const n = period.length
     const only = scope.categoryId
     return (t) =>
       t.recurring === scope.cadence &&
-      t.date.slice(0, n) === period &&
+      inWindow(t) &&
       (only ? t.categoryId === only : !excl.has(t.categoryId))
   }
   if (scope.kind === 'group') {
     // Several categories, one period. A transaction has exactly one category, so a group is a
     // partition of its members' spend — it can never double-count against itself.
     const ids = new Set(scope.categoryIds)
-    const period = scope.year != null ? String(scope.year) : mk
-    const n = period.length
-    return (t) => ids.has(t.categoryId) && t.date.slice(0, n) === period
+    return (t) => ids.has(t.categoryId) && inWindow(t)
   }
   // tracking scope: lifetime spend of the tracking's members
   const mem = members(scope.trackingId, vault)
   return (t) => mem.has(t.id)
+}
+
+/**
+ * The test a transaction must pass to be charged against this budget in its NATIVE window
+ * containing the viewed month — evergreen: a year budget viewed at `2026-06` measures 2026,
+ * the same budget viewed at `2025-06` measures 2025.
+ *
+ * One matcher for every scope, so `budgetScopeSpent` and `budgetScopeTxns` cannot drift — and
+ * so the roll-up can ask *which* transactions a budget covers rather than only *how much*.
+ * That is what lets it count a transaction two budgets both match exactly once.
+ */
+export function budgetMatcher(vault: Vault, budget: Budget, mk: MonthKey): (t: Transaction) => boolean {
+  const native = budgetNativePeriod(budget)
+  const w = periodWindow(native ?? 'month', mk) // tracking ignores the window anyway
+  return budgetMatcherIn(vault, budget, w.fromMk, w.toMk)
 }
 
 /** Spend charged against a budget for the viewed month, respecting its scope.
@@ -85,22 +174,65 @@ export function budgetScopeTxns(vault: Vault, budget: Budget, mk: MonthKey): Set
   return out
 }
 
+/**
+ * Spend charged against a budget over the HORIZON window containing `mk` — the coarser-view
+ * read (a monthly budget summed over the quarter, etc.). Callers enforce the minimum-resolution
+ * rule (native ≤ horizon); reading finer than native is not offered anywhere.
+ */
+export function budgetSpentAt(
+  vault: Vault,
+  budget: Budget,
+  horizon: BudgetPeriod,
+  mk: MonthKey,
+  rates?: RateBook,
+): number {
+  const w = periodWindow(horizon, mk)
+  const match = budgetMatcherIn(vault, budget, w.fromMk, w.toMk)
+  const conv = rowConverter(vault, rates ?? vaultOnlyBook(vault))
+  let sum = 0
+  for (const t of vault.transactions) {
+    if (!match(t)) continue
+    const amt = conv(t)
+    if (amt !== null) sum += expense(amt)
+  }
+  return Math.max(0, round2(sum))
+}
+
+/** The ids a budget covers inside the horizon window — the horizon roll-up's dedup key. */
+export function budgetTxnsAt(vault: Vault, budget: Budget, horizon: BudgetPeriod, mk: MonthKey): Set<string> {
+  const w = periodWindow(horizon, mk)
+  const match = budgetMatcherIn(vault, budget, w.fromMk, w.toMk)
+  const out = new Set<string>()
+  for (const t of vault.transactions) if (match(t)) out.add(t.id)
+  return out
+}
+
+/** A budget's amount scaled to a coarser horizon: €400/mo reads as €1,200 over a quarter. */
+export function budgetAmountAt(budget: Budget, horizon: BudgetPeriod): number {
+  const native = budgetNativePeriod(budget)
+  if (native === null) return budget.amount
+  return round2((budget.amount * PERIOD_MONTHS[horizon]) / PERIOD_MONTHS[native])
+}
+
 /** Per-category recurring spend for one cadence in the viewed period — the breakdown rows
- *  under a recurring budget. Excludes `excludeIds`; ordered by spend descending. */
+ *  under a recurring budget. Excludes `excludeIds`; ordered by spend descending. `horizon`
+ *  widens the window to the one a coarser view sums the row's bar over (a monthly budget read
+ *  at the quarter); absent, it is the cadence's own month or year. */
 export function recurringBreakdown(
   vault: Vault,
   cadence: 'monthly' | 'yearly',
   mk: MonthKey,
   excludeIds: string[] = [],
   rates?: RateBook,
+  horizon?: BudgetPeriod,
 ): { categoryId: string; spent: number }[] {
   const excl = new Set(excludeIds)
   const conv = rowConverter(vault, rates ?? vaultOnlyBook(vault))
-  const period = cadence === 'yearly' ? mk.slice(0, 4) : mk
-  const n = period.length
+  const w = periodWindow(horizon ?? (cadence === 'yearly' ? 'year' : 'month'), mk)
   const byCat = new Map<string, number>()
   for (const t of vault.transactions) {
-    if (t.recurring !== cadence || excl.has(t.categoryId) || t.date.slice(0, n) !== period) continue
+    const tm = t.date.slice(0, 7)
+    if (t.recurring !== cadence || excl.has(t.categoryId) || tm < w.fromMk || tm > w.toMk) continue
     const amt = conv(t)
     if (amt === null) continue
     const e = expense(amt)
@@ -112,64 +244,52 @@ export function recurringBreakdown(
     .sort((a, b) => b.spent - a.spent)
 }
 
-/** A human label for a budget's scope period, for the row caption. */
+/** Row-caption words for a period: 'monthly' · 'quarterly' · 'per half-year' · 'annual'. */
+export const PERIOD_LABEL: Record<BudgetPeriod, string> = {
+  month: 'monthly',
+  quarter: 'quarterly',
+  half: 'per half-year',
+  year: 'annual',
+}
+
+/** A human label for a budget's scope period, for the row caption. Evergreen — no year number. */
 export function budgetScopeLabel(vault: Vault, budget: Budget): string {
   const scope = budget.scope
   if (!scope) return 'monthly'
-  if (scope.kind === 'category-year') return `${scope.year} · annual`
+  if (scope.kind === 'category-period') return PERIOD_LABEL[scope.period]
   if (scope.kind === 'recurring') return scope.cadence === 'yearly' ? 'annual · recurring' : 'monthly · recurring'
-  if (scope.kind === 'group') {
-    const n = scope.categoryIds.length
-    return scope.year != null ? `${scope.year} · annual · ${n} categories` : `monthly · ${n} categories`
-  }
+  if (scope.kind === 'group') return `${PERIOD_LABEL[scope.period ?? 'month']} · ${scope.categoryIds.length} categories`
   const tr = vault.trackings.find((t) => t.id === scope.trackingId)
   return tr ? `${tr.name} · per-event` : 'per-event'
 }
 
 /** Does this budget measure one month at a time (so it has a monthly history and a pace)? */
 export function isMonthlyScope(budget: Budget): boolean {
-  const s = budget.scope
-  if (!s) return true
-  if (s.kind === 'recurring') return s.cadence === 'monthly'
-  if (s.kind === 'group') return s.year == null
-  return false
+  return budgetNativePeriod(budget) === 'month'
 }
 
-/**
- * The calendar year this budget measures when viewed at `mk`, or null when it is not
- * year-windowed. `category-year` and group-with-year carry their own year; a yearly
- * recurring budget follows the viewed month's year (`budgetMatcher` windows it the same
- * way); tracking and the monthly scopes have no year.
- */
-export function budgetScopeYear(budget: Budget, mk: MonthKey): number | null {
-  const s = budget.scope
-  if (!s) return null
-  if (s.kind === 'category-year') return s.year
-  if (s.kind === 'group') return s.year ?? null
-  if (s.kind === 'recurring') return s.cadence === 'yearly' ? Number(mk.slice(0, 4)) : null
-  return null // tracking: its span is not a calendar year
-}
-
-/** €/mo equivalent of a year-scoped budget's amount (amount / 12) — derived, never stored. */
-export function monthlyEquivalent(budget: Budget, mk: MonthKey): number | null {
-  return budgetScopeYear(budget, mk) != null && budget.amount > 0 ? round2(budget.amount / 12) : null
+/** €/mo equivalent of a coarser-period budget's amount — derived, never stored. Null for
+ *  month-native (it already is one) and tracking (no calendar period at all). */
+export function monthlyEquivalent(budget: Budget): number | null {
+  const native = budgetNativePeriod(budget)
+  if (native === null || native === 'month' || budget.amount <= 0) return null
+  return round2(budget.amount / PERIOD_MONTHS[native])
 }
 
 export interface PeriodSpend {
-  /** MonthKey or year string — also the drill period. */
+  /** A `periodWindow().key` ('2026-07' · '2026-Q3' · '2026-H2' · '2026') — also the drill period. */
   key: string
-  /** 'Jul' · '2025'. */
+  /** 'Jul' · 'Q3 2025' · '2025'. */
   label: string
   spent: number
   budget: number
 }
 
-const MON = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
-
 /**
- * What this budget's own scope cost over the last `periods`, ending at `endMk` — months for a
- * monthly scope, calendar years for an annual one. Measured THROUGH `budgetScopeSpent`, so the
- * history and the row's bar are produced by the same arithmetic and cannot disagree.
+ * What this budget's own scope cost over the last `periods` NATIVE windows, ending at the
+ * window containing `endMk` — months, quarters, halves or years. Evergreen scopes re-window
+ * by the probed month, so every point is measured THROUGH `budgetScopeSpent` and the history
+ * and the row's bar are produced by the same arithmetic and cannot disagree.
  *
  * A `tracking` budget covers one lifetime span, not a series, so it returns `[]` — the caller
  * says so rather than drawing a trend through a single point.
@@ -181,35 +301,20 @@ export function budgetPeriodHistory(
   periods: number,
   rates?: RateBook,
 ): PeriodSpend[] {
-  const scope = budget.scope
-  if (scope?.kind === 'tracking') return []
+  const native = budgetNativePeriod(budget)
+  if (native === null) return []
+  const span = PERIOD_MONTHS[native]
+  const end = periodWindow(native, endMk)
   const out: PeriodSpend[] = []
-  if (isMonthlyScope(budget)) {
-    for (let i = periods - 1; i >= 0; i--) {
-      const mk = addMonths(endMk, -i)
-      out.push({
-        key: mk,
-        label: MON[Number(mk.slice(5, 7)) - 1]!,
-        spent: budgetScopeSpent(vault, budget, mk, rates),
-        budget: budget.amount,
-      })
-    }
-    return out
-  }
-  // Annual scope: re-ask the same budget about each year by moving its `year`.
-  const endYear = Number(endMk.slice(0, 4))
   for (let i = periods - 1; i >= 0; i--) {
-    const year = endYear - i
-    const shifted: Budget =
-      scope?.kind === 'category-year'
-        ? { ...budget, scope: { ...scope, year } }
-        : scope?.kind === 'group'
-          ? { ...budget, scope: { ...scope, year } }
-          : budget
+    const mk = addMonths(end.fromMk, -i * span)
+    const w = periodWindow(native, mk)
     out.push({
-      key: String(year),
-      label: String(year),
-      spent: budgetScopeSpent(vault, shifted, `${year}-01`, rates),
+      // Bars are narrow: months keep their bare 'Jul' label as before; coarser periods carry
+      // the year ('Q3 2025'), since an 8-quarter series repeats every quarter name.
+      key: w.key,
+      label: native === 'month' ? MON[Number(mk.slice(5, 7)) - 1]! : w.label,
+      spent: budgetScopeSpent(vault, budget, mk, rates),
       budget: budget.amount,
     })
   }
@@ -218,31 +323,48 @@ export function budgetPeriodHistory(
 
 /**
  * "What should this budget be?" (QUESTIONARY Q120) — the mean of what this exact scope actually
- * cost over the last `months` COMPLETE months. The current, partial month is never averaged in.
+ * cost over the last `periods` COMPLETE native windows: months for a monthly budget, quarters
+ * for a quarterly one, and so on. The current, partial window is never averaged in.
  *
- * Months where the VAULT has no data at all are skipped rather than counted as €0, matching
- * `trailingAvg` in selectors: a young vault's average must reflect the months it really has. A
- * month the vault covers in which this scope simply cost nothing DOES count — that is a real €0.
+ * Windows where the VAULT has no data at all, or that start before its first month, are skipped
+ * rather than counted as €0 or as complete, matching
+ * `trailingAvg` in selectors: a young vault's average must reflect the periods it really has. A
+ * window the vault covers in which this scope simply cost nothing DOES count — that is a real €0.
  *
- * `null` when there is nothing to average from: no covered months, or this scope has never cost
- * anything across the window. Both would otherwise produce a €0 "suggestion", and proposing a €0
- * budget is worse than admitting there is nothing to go on. Also `null` for a scope with no
- * monthly rhythm (annual, per-trip), where a monthly mean would be meaningless.
+ * `null` when there is nothing to average from: no covered windows, or this scope has never cost
+ * anything across the span. Both would otherwise produce a €0 "suggestion", and proposing a €0
+ * budget is worse than admitting there is nothing to go on. Also `null` for a per-trip budget,
+ * whose span is not a calendar period.
  */
 export function scopeTrailingAvg(
   vault: Vault,
   budget: Budget,
-  months: number,
+  periods: number,
   currentMk: MonthKey,
   rates?: RateBook,
 ): number | null {
-  if (!isMonthlyScope(budget)) return null
+  const native = budgetNativePeriod(budget)
+  if (native === null) return null
+  const span = PERIOD_MONTHS[native]
+  const cur = periodWindow(native, currentMk)
+  // A coarse window that starts before the vault does is only partly imported: one transaction in
+  // it is not coverage, and averaging it as complete understates the figure.
+  let firstMk: MonthKey | null = null
+  for (const t of vault.transactions) {
+    const m = t.date.slice(0, 7)
+    if (firstMk === null || m < firstMk) firstMk = m
+  }
   let sum = 0
   let n = 0
-  for (let i = 1; i <= months; i++) {
-    const mk = addMonths(currentMk, -i)
-    if (!vault.transactions.some((t) => t.date.slice(0, 7) === mk)) continue
-    sum += budgetScopeSpent(vault, budget, mk, rates)
+  for (let i = 1; i <= periods; i++) {
+    const w = periodWindow(native, addMonths(cur.fromMk, -i * span))
+    if (firstMk === null || w.fromMk < firstMk) continue
+    const covered = vault.transactions.some((t) => {
+      const m = t.date.slice(0, 7)
+      return m >= w.fromMk && m <= w.toMk
+    })
+    if (!covered) continue
+    sum += budgetScopeSpent(vault, budget, w.fromMk, rates)
     n++
   }
   return n === 0 || sum === 0 ? null : round2(sum / n)
@@ -274,8 +396,10 @@ export interface BudgetRollup {
   /**
    * Budgets deliberately left OUT of the total, and why. Shown as memo lines — a figure
    * that quietly swallowed them would be wrong in two different ways (see below).
+   * `longer` = budgets whose native period is coarser than the viewing horizon (their
+   * native amounts summed; the caller renders them as paced rows, not as part of this total).
    */
-  memo: { annual: number; perTrip: number; crossCategoryRecurring: number }
+  memo: { longer: number; perTrip: number; crossCategoryRecurring: number }
   /**
    * Categories covered by two counted budgets where NEITHER contains the other (e.g. two
    * groups both including Entertainment). Spend is still counted once, but the *plan* is
@@ -292,16 +416,27 @@ function strictSubset<T>(a: ReadonlySet<T>, b: ReadonlySet<T>): boolean {
   return true
 }
 
+/** True when the two sets hold exactly the same members. */
+function setEquals<T>(a: ReadonlySet<T>, b: ReadonlySet<T>): boolean {
+  if (a.size !== b.size) return false
+  for (const x of a) if (!b.has(x)) return false
+  return true
+}
+
 /**
- * Every budget that covers the viewed MONTH, added up (QUESTIONARY Q122–124).
+ * Every budget that covers the viewed HORIZON window, added up (QUESTIONARY Q122–124).
  *
  * Two rules carry the whole feature, and they are why this is a selector rather than a
  * `reduce` at the call site.
  *
- * **1. A different PERIOD cannot be summed into this month.** `category-year`, `tracking` and
- * group-with-a-year budgets cover a different span; a €2,400 annual budget is not €2,400 of
- * this month. A yearly or cross-category `recurring` budget is held out too — it is an overlay
- * across the category rows rather than a period of its own. All become memo lines.
+ * **1. A COARSER PERIOD cannot be summed into this window.** A budget whose native period is
+ * coarser than the horizon (a yearly budget at the month view) covers a different span; a
+ * €2,400 annual budget is not €2,400 of this month. Those become `memo.longer`, and the caller
+ * renders them paced against their own native window. A budget at or finer than the horizon IS
+ * counted, scaled (`budgetAmountAt`): a €400 monthly budget is €1,200 of plan at the quarter
+ * view. `tracking` budgets stay out at every horizon (a trip's span is not a calendar period),
+ * and a cross-category `recurring` budget too — it is an overlay across the category rows
+ * rather than a period of its own.
  *
  * **2. EACH TRANSACTION IS COUNTED ONCE.** What remains can overlap: a "Fun" group over Dining
  * out + Entertainment while Dining out also has its own budget, or — and this shipped broken —
@@ -314,40 +449,49 @@ function strictSubset<T>(a: ReadonlySet<T>, b: ReadonlySet<T>): boolean {
  *
  * Containment is tested two ways because neither alone is enough: by CATEGORY set, which is
  * stable even in a month with no spend at all, and by TRANSACTION set, which catches a narrower
- * matcher over the same categories (the recurring-inside-category case). Both tests are pairwise
- * and existential, so the outcome never depends on `vault.budgets` order — which matters,
- * because the merge sorts collections by id.
+ * matcher over the same categories (the recurring-inside-category case). EQUAL sets — a monthly
+ * and a quarterly budget on the same category, both counted at the quarter horizon, matching the
+ * same rows — resolve by native period: the FINER budget is the sub-limit inside the coarser
+ * one's plan, deterministically. All tests are pairwise and existential, so the outcome never
+ * depends on `vault.budgets` order — which matters, because the merge sorts collections by id.
  */
 export function budgetRollup(
   vault: Vault,
   mk: MonthKey,
+  horizon: BudgetPeriod,
   project: (spent: number) => number,
   rates?: RateBook,
 ): BudgetRollup {
   const conv = rowConverter(vault, rates ?? vaultOnlyBook(vault))
-  const memo = { annual: 0, perTrip: 0, crossCategoryRecurring: 0 }
+  const memo = { longer: 0, perTrip: 0, crossCategoryRecurring: 0 }
   const counted: Budget[] = []
 
   for (const b of vault.budgets) {
     const scope = b.scope
-    if (scope?.kind === 'category-year' || (scope?.kind === 'group' && scope.year != null)) {
-      memo.annual += b.amount
-      continue
-    }
     if (scope?.kind === 'tracking') {
       memo.perTrip += b.amount
       continue
     }
-    if (scope?.kind === 'recurring' && (scope.cadence === 'yearly' || !scope.categoryId)) {
+    if (scope?.kind === 'recurring' && !scope.categoryId) {
       memo.crossCategoryRecurring += b.amount
+      continue
+    }
+    const native = budgetNativePeriod(b)!
+    if (PERIOD_MONTHS[native] > PERIOD_MONTHS[horizon]) {
+      memo.longer += b.amount
       continue
     }
     counted.push(b)
   }
 
-  const txns = counted.map((b) => budgetScopeTxns(vault, b, mk))
+  const natives = counted.map((b) => budgetNativePeriod(b)!)
+  const txns = counted.map((b) => budgetTxnsAt(vault, b, horizon, mk))
   const cats = counted.map((b) => new Set(budgetCategoryIds(b)))
+  const recurringOnly = counted.map((b) => b.scope?.kind === 'recurring')
   const byId = new Map(vault.transactions.map((t) => [t.id, t]))
+  // `i` sits strictly inside `j` — by category set, or by the rows it actually matched.
+  const inside = (i: number, j: number) =>
+    strictSubset(cats[i]!, cats[j]!) || (txns[i]!.size > 0 && strictSubset(txns[i]!, txns[j]!))
 
   const rows: RollupRow[] = counted.map((b, i) => {
     let sum = 0
@@ -357,18 +501,29 @@ export function budgetRollup(
     }
     const spent = Math.max(0, round2(sum))
     const scope = b.scope
-    const subLimit = counted.some(
-      (_, j) =>
-        j !== i &&
-        (strictSubset(cats[i]!, cats[j]!) || (txns[i]!.size > 0 && strictSubset(txns[i]!, txns[j]!))),
-    )
+    const amount = budgetAmountAt(b, horizon)
+    const subLimit = counted.some((_, j) => {
+      if (j === i) return false
+      if (inside(i, j)) return true
+      // Equal coverage, different native periods: the finer budget is the sub-limit — unless `j`
+      // already sits strictly inside `i`, or the two would demote each other and both leave the
+      // plan. Equal categories only mean equal coverage when both matchers are the same kind: a
+      // recurring-only budget covers less of its category than an ordinary one does.
+      const finer = PERIOD_MONTHS[natives[i]!] < PERIOD_MONTHS[natives[j]!]
+      return (
+        finer &&
+        !inside(j, i) &&
+        ((recurringOnly[i] === recurringOnly[j] && setEquals(cats[i]!, cats[j]!)) ||
+          (txns[i]!.size > 0 && setEquals(txns[i]!, txns[j]!)))
+      )
+    })
     return {
       budgetId: b.id,
       categoryId: scope?.kind === 'recurring' ? (scope.categoryId ?? b.categoryId) : b.categoryId,
       name: b.name,
       spent,
-      budget: b.amount,
-      delta: round2(spent - b.amount),
+      budget: amount,
+      delta: round2(spent - amount),
       subLimit: subLimit || undefined,
     }
   })

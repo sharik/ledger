@@ -11,9 +11,18 @@
 // dialog rather than reinvented.
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
-import { budgetRollup, budgetScopeLabel, budgetScopeSpent, budgetScopeYear, isMonthlyScope, monthlyEquivalent, scopeTrailingAvg } from '../analytics/budgets'
-import { monthEndProjectionThrough, yearElapsedFraction, yearEndProjection } from '../analytics/project'
-import { currentMonthKey, daysInMonth, dayOfToday, round2, todayStr } from '../model/selectors'
+import {
+  PERIOD_MONTHS,
+  budgetNativePeriod,
+  budgetRollup,
+  budgetScopeLabel,
+  budgetScopeSpent,
+  monthlyEquivalent,
+  scopeTrailingAvg,
+  type BudgetPeriod,
+} from '../analytics/budgets'
+import { periodElapsedFraction, periodEndProjection, periodEndProjectionThrough } from '../analytics/project'
+import { currentMonthKey, round2, todayStr } from '../model/selectors'
 import type { Budget, Category } from '../model/types'
 import { budgetCategoryIds, budgetKey, CAT_TRANSFERS } from '../model/types'
 import { useDerived, useStore, useStoreState } from './store'
@@ -23,50 +32,48 @@ import { useFreshness } from './freshness'
 import { BudgetRow } from './kit/rows'
 import { BG, FAINT, HAIR, INK, MONO, MUT, SURFACE, SURFACE2, fmt } from './theme'
 
-type Kind =
-  | 'monthly'
-  | 'annual'
-  | 'group-m'
-  | 'group-y'
-  | 'recurring-m'
-  | 'recurring-y'
-  | 'recurring-cat-m'
-  | 'recurring-cat-y'
-  | 'tracking'
+type Kind = 'category' | 'group' | 'recurring' | 'recurring-cat' | 'tracking'
 
 /**
  * The option list, in plain language, each with the one line that decides whether it is the
- * right choice. The `value`s of the pre-existing kinds are unchanged: they are the contract the
- * e2e suite drives, and a rename would be churn with no reader benefit.
+ * right choice. WHAT to count and OVER WHICH PERIOD are now separate questions: five kinds ×
+ * four periods replaced the nine-value union the periods used to be baked into. The old
+ * `value`s ('monthly', 'annual', 'group-m', …) were the e2e contract; the suite moved with
+ * them, deliberately, in the period rework.
  */
 const KINDS: { value: Kind; label: string; help: string }[] = [
-  { value: 'monthly', label: 'One category, every month', help: 'The usual kind. Counts everything filed under one category, in the month you are looking at.' },
-  { value: 'annual', label: 'One category, for a whole year', help: 'For spending that arrives in lumps — insurance, taxes, holidays. Counts the whole calendar year, so it is held out of the monthly total.' },
-  { value: 'group-m', label: 'Several categories, every month', help: 'One limit covering a few categories at once, e.g. "Fun" over Dining out and Entertainment.' },
-  { value: 'group-y', label: 'Several categories, for a whole year', help: 'The same, but measured over the calendar year rather than the month.' },
-  { value: 'recurring-m', label: 'Everything you marked monthly-recurring', help: 'Every subscription and standing charge you have marked monthly, across all categories.' },
-  { value: 'recurring-y', label: 'Everything you marked yearly-recurring', help: 'The same for yearly charges, measured over the calendar year.' },
-  { value: 'recurring-cat-m', label: 'One category’s monthly-recurring charges', help: 'Only the repeating part of one category — the Netflix in Entertainment, not the cinema tickets.' },
-  { value: 'recurring-cat-y', label: 'One category’s yearly-recurring charges', help: 'The same for yearly charges in one category.' },
-  { value: 'tracking', label: 'One trip or event', help: 'Counts the rows you have put in a trip, over its whole span rather than a month.' },
+  { value: 'category', label: 'One category', help: 'The usual kind. Counts everything filed under one category, over the period you choose below.' },
+  { value: 'group', label: 'Several categories', help: 'One limit covering a few categories at once, e.g. "Fun" over Dining out and Entertainment.' },
+  { value: 'recurring', label: 'Everything you marked recurring', help: 'Every subscription and standing charge you have marked recurring, across all categories.' },
+  { value: 'recurring-cat', label: 'One category’s recurring charges', help: 'Only the repeating part of one category — the Netflix in Entertainment, not the cinema tickets.' },
+  { value: 'tracking', label: 'One trip or event', help: 'Counts the rows you have put in a trip, over its whole span rather than a calendar period.' },
 ]
 
-const needsOneCategory = (k: Kind) => k === 'monthly' || k === 'annual' || k === 'recurring-cat-m' || k === 'recurring-cat-y'
-const needsManyCategories = (k: Kind) => k === 'group-m' || k === 'group-y'
-/** Kinds whose SAVED amount is a year total — the /mo⇄/yr entry toggle applies to all of them. */
-const yearlyKind = (k: Kind) => k === 'annual' || k === 'group-y' || k === 'recurring-y' || k === 'recurring-cat-y'
+const PERIODS: { value: BudgetPeriod; label: string; help: string }[] = [
+  { value: 'month', label: 'Month', help: 'The usual rhythm — one calendar month at a time.' },
+  { value: 'quarter', label: 'Quarter', help: 'For lumps every few months — a quarterly insurance premium. Q1 is Jan–Mar.' },
+  { value: 'half', label: 'Half-year', help: 'For twice-a-year lumps. H1 is Jan–Jun, H2 is Jul–Dec.' },
+  { value: 'year', label: 'Year', help: 'For yearly lumps — taxes, holidays. Counts the whole calendar year.' },
+]
+
+const PERIOD_SHORT: Record<BudgetPeriod, string> = { month: 'mo', quarter: 'qr', half: 'half', year: 'yr' }
+const PERIOD_WORD: Record<BudgetPeriod, string> = { month: 'month', quarter: 'quarter', half: 'half-year', year: 'year' }
+
+const needsOneCategory = (k: Kind) => k === 'category' || k === 'recurring-cat'
+const needsManyCategories = (k: Kind) => k === 'group'
+/** Kinds that carry the period picker — the others' window is fixed by cadence or trip span. */
+const periodKind = (k: Kind) => k === 'category' || k === 'group'
 
 const inputStyle = { fontSize: 13, padding: '7px 10px', border: `1px solid ${HAIR}`, borderRadius: 5, background: SURFACE, color: INK }
 const label = { fontFamily: MONO, fontSize: 9.5, color: FAINT, letterSpacing: '.06em', display: 'block', marginBottom: 5 }
 
 function kindOf(b: Budget): Kind {
   const s = b.scope
-  if (!s) return 'monthly'
-  if (s.kind === 'category-year') return 'annual'
+  if (!s) return 'category'
+  if (s.kind === 'category-period') return 'category'
   if (s.kind === 'tracking') return 'tracking'
-  if (s.kind === 'group') return s.year != null ? 'group-y' : 'group-m'
-  if (s.categoryId) return s.cadence === 'yearly' ? 'recurring-cat-y' : 'recurring-cat-m'
-  return s.cadence === 'yearly' ? 'recurring-y' : 'recurring-m'
+  if (s.kind === 'group') return 'group'
+  return s.categoryId ? 'recurring-cat' : 'recurring'
 }
 
 export function BudgetDialog({
@@ -94,7 +101,12 @@ export function BudgetDialog({
   const spendable = vault.categories.filter((c) => c.role !== 'transfers' && c.role !== 'income')
   const housingId = vault.categories.find((c) => c.role === 'housing')?.id
 
-  const [kind, setKind] = useState<Kind>(budget ? kindOf(budget) : 'monthly')
+  const [kind, setKind] = useState<Kind>(budget ? kindOf(budget) : 'category')
+  /** The native period for category/group kinds; recurring kinds carry a cadence instead. */
+  const [period, setPeriod] = useState<BudgetPeriod>(budget ? (budgetNativePeriod(budget) ?? 'month') : 'month')
+  const [cadence, setCadence] = useState<'monthly' | 'yearly'>(
+    budget?.scope?.kind === 'recurring' ? budget.scope.cadence : 'monthly',
+  )
   // Preselect a category that can actually be saved. Every category is offered — a category may
   // legitimately carry both a monthly and an annual budget — but opening on one that already has
   // a plain monthly budget would land the reader straight on the duplicate guard.
@@ -106,8 +118,8 @@ export function BudgetDialog({
   const [catIds, setCatIds] = useState<string[]>(budget?.scope?.kind === 'group' ? budget.scope.categoryIds : [])
   const [name, setName] = useState(budget?.name ?? '')
   const [amount, setAmount] = useState(budget ? String(budget.amount) : '')
-  /** Entry unit for yearly kinds — the record always stores the year total. */
-  const [unit, setUnit] = useState<'mo' | 'yr'>('yr')
+  /** Entry unit for coarser periods — the record always stores the native-period total. */
+  const [unit, setUnit] = useState<'mo' | 'per'>('per')
   const [trackId, setTrackId] = useState(
     budget?.scope?.kind === 'tracking' ? budget.scope.trackingId : (vault.trackings[0]?.id ?? ''),
   )
@@ -127,54 +139,57 @@ export function BudgetDialog({
     }
   }, [onClose])
 
-  const year = Number(cm.slice(0, 4))
+  /** The native period the form currently describes — null only for a per-trip budget. */
+  const native: BudgetPeriod | null =
+    kind === 'tracking' ? null : periodKind(kind) ? period : cadence === 'yearly' ? 'year' : 'month'
 
   /** The budget this form currently describes — the single source for preview, suggestion,
    *  overlap and save, so none of them can describe something different from the others. */
   const candidate = useMemo((): Budget => {
     const base = { id: budget?.id ?? 'preview', updatedAt: budget?.updatedAt ?? '', fixed: budget?.fixed }
     const raw = Number(amount) || 0
-    // A figure typed at /mo describes the same budget as its ×12 at /yr; the record stores the
-    // year total, and rounding here means €2,500/yr → 208.33/mo → €2,500 survives a round trip.
-    const amt = yearlyKind(kind) && unit === 'mo' ? Math.round(raw * 12) : raw
+    // A figure typed at /mo describes the same budget as its ×N at the native period; the record
+    // stores the period total, and rounding here means €2,500/yr → 208.33/mo → €2,500 survives a
+    // round trip.
+    const amt = native != null && native !== 'month' && unit === 'mo' ? Math.round(raw * PERIOD_MONTHS[native]) : raw
     const trimmed = name.trim() || undefined
     if (kind === 'tracking') return { ...base, categoryId: CAT_TRANSFERS, amount: amt, name: trimmed, scope: { kind: 'tracking', trackingId: trackId } }
-    if (kind === 'recurring-m' || kind === 'recurring-y') {
+    if (kind === 'recurring') {
       return {
         ...base,
         categoryId: CAT_TRANSFERS,
         amount: amt,
         name: trimmed,
-        scope: { kind: 'recurring', cadence: kind === 'recurring-y' ? 'yearly' : 'monthly', excludeCategoryIds: housingId ? [housingId] : [] },
+        scope: { kind: 'recurring', cadence, excludeCategoryIds: housingId ? [housingId] : [] },
       }
     }
-    if (needsManyCategories(kind)) {
+    if (kind === 'recurring-cat') {
+      return { ...base, categoryId: catId, amount: amt, name: trimmed, scope: { kind: 'recurring', cadence, categoryId: catId } }
+    }
+    if (kind === 'group') {
       return {
         ...base,
         categoryId: CAT_TRANSFERS,
         amount: amt,
         name: trimmed,
-        scope: { kind: 'group', categoryIds: catIds, ...(kind === 'group-y' ? { year } : {}) },
+        scope: { kind: 'group', categoryIds: catIds, ...(period !== 'month' ? { period } : {}) },
       }
     }
-    if (kind === 'recurring-cat-m' || kind === 'recurring-cat-y') {
-      return { ...base, categoryId: catId, amount: amt, name: trimmed, scope: { kind: 'recurring', cadence: kind === 'recurring-cat-y' ? 'yearly' : 'monthly', categoryId: catId } }
-    }
-    if (kind === 'annual') {
-      const y = budget?.scope?.kind === 'category-year' ? budget.scope.year : year
-      return { ...base, categoryId: catId, amount: amt, name: trimmed, scope: { kind: 'category-year', categoryId: catId, year: y } }
+    if (period !== 'month') {
+      return { ...base, categoryId: catId, amount: amt, name: trimmed, scope: { kind: 'category-period', categoryId: catId, period } }
     }
     return { ...base, categoryId: catId, amount: amt, name: trimmed }
-  }, [kind, catId, catIds, name, amount, unit, trackId, budget, housingId, year])
+  }, [kind, period, cadence, catId, catIds, name, amount, unit, trackId, budget, housingId, native])
 
   const spent = budgetScopeSpent(vault, candidate, cm, rb)
-  const monthly = isMonthlyScope(candidate)
-  const scopeYear = budgetScopeYear(candidate, cm)
-  const proj = monthly
-    ? monthEndProjectionThrough(spent, cm, through)
-    : scopeYear != null
-      ? yearEndProjection(spent, scopeYear, today)
-      : spent
+  // A month paces against the statement window (`through`); a coarser period against the
+  // calendar, the same convention its Plan row uses.
+  const proj =
+    native === 'month'
+      ? periodEndProjectionThrough(spent, 'month', cm, through)
+      : native != null
+        ? periodEndProjection(spent, native, cm, today)
+        : spent
   const avg3 = scopeTrailingAvg(vault, candidate, 3, cm, rb)
   const avg6 = scopeTrailingAvg(vault, candidate, 6, cm, rb)
 
@@ -182,7 +197,9 @@ export function BudgetDialog({
   // roll-up will report, said here instead, while it is still a choice.
   const alreadyBudgeted = useMemo(() => {
     const mine = new Set(budgetCategoryIds(candidate))
-    const counted = budgetRollup(vault, cm, (s) => s, rb).rows
+    // At the YEAR horizon every calendar-period budget is counted, so an overlap with a
+    // quarterly or annual budget is named here too, not only monthly-vs-monthly.
+    const counted = budgetRollup(vault, cm, 'year', (s) => s, rb).rows
     const names: string[] = []
     for (const r of counted) {
       if (r.budgetId === budget?.id) continue
@@ -269,8 +286,8 @@ export function BudgetDialog({
             onChange={(e) => {
               const next = e.target.value as Kind
               setKind(next)
-              // A stale /mo on a non-yearly kind would silently ×12 the typed figure.
-              if (!yearlyKind(next)) setUnit('yr')
+              // A stale /mo on a month-windowed kind would silently ×N the typed figure.
+              if (!periodKind(next) && !(next === 'recurring' || next === 'recurring-cat')) setUnit('per')
             }}
             style={{ ...inputStyle, width: '100%' }}
           >
@@ -282,6 +299,72 @@ export function BudgetDialog({
           </select>
           <div style={{ fontSize: 12, color: MUT, marginTop: 6, lineHeight: 1.5 }}>{activeKind.help}</div>
         </Field>
+
+        {periodKind(kind) && (
+          <Field title="OVER WHICH PERIOD?">
+            <div style={{ display: 'inline-flex', border: `1px solid ${HAIR}`, borderRadius: 5, overflow: 'hidden' }}>
+              {PERIODS.map((p) => {
+                const on = p.value === period
+                return (
+                  <button
+                    key={p.value}
+                    data-testid="budget-period"
+                    data-period={p.value}
+                    aria-pressed={on}
+                    onClick={() => setPeriod(p.value)}
+                    style={{
+                      fontSize: 12,
+                      padding: '6px 12px',
+                      border: 'none',
+                      cursor: 'pointer',
+                      background: on ? INK : SURFACE,
+                      color: on ? SURFACE : MUT,
+                    }}
+                  >
+                    {p.label}
+                  </button>
+                )
+              })}
+            </div>
+            <div style={{ fontSize: 12, color: MUT, marginTop: 6, lineHeight: 1.5 }}>
+              {PERIODS.find((p) => p.value === period)!.help} Lumpy spending belongs at the horizon where it is
+              honest — a budget can always be viewed at a longer horizon, never a shorter one.
+            </div>
+          </Field>
+        )}
+
+        {(kind === 'recurring' || kind === 'recurring-cat') && (
+          <Field title="WHICH CADENCE?">
+            <div style={{ display: 'inline-flex', border: `1px solid ${HAIR}`, borderRadius: 5, overflow: 'hidden' }}>
+              {(['monthly', 'yearly'] as const).map((c) => {
+                const on = c === cadence
+                return (
+                  <button
+                    key={c}
+                    data-testid="budget-cadence"
+                    data-cadence={c}
+                    aria-pressed={on}
+                    onClick={() => setCadence(c)}
+                    style={{
+                      fontSize: 12,
+                      padding: '6px 12px',
+                      border: 'none',
+                      cursor: 'pointer',
+                      background: on ? INK : SURFACE,
+                      color: on ? SURFACE : MUT,
+                    }}
+                  >
+                    {c === 'monthly' ? 'Monthly charges' : 'Yearly charges'}
+                  </button>
+                )
+              })}
+            </div>
+            <div style={{ fontSize: 12, color: MUT, marginTop: 6, lineHeight: 1.5 }}>
+              Charges are marked monthly- or yearly-recurring on the transaction itself; the budget
+              counts one cadence over its matching window ({cadence === 'yearly' ? 'the calendar year' : 'the month'}).
+            </div>
+          </Field>
+        )}
 
         {needsOneCategory(kind) && (
           <Field title="CATEGORY">
@@ -315,9 +398,9 @@ export function BudgetDialog({
           </Field>
         )}
 
-        {(kind === 'recurring-m' || kind === 'recurring-y') && (
+        {kind === 'recurring' && (
           <div style={{ fontSize: 12, color: MUT, marginBottom: 16 }}>
-            Counts every charge you have marked {kind === 'recurring-y' ? 'yearly' : 'monthly'}-recurring
+            Counts every charge you have marked {cadence === 'yearly' ? 'yearly' : 'monthly'}-recurring
             {housingId ? ', except Housing — so a recurring rent or mortgage does not swamp the total' : ''}.
           </div>
         )}
@@ -335,13 +418,13 @@ export function BudgetDialog({
         <Field title="AMOUNT">
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
             <input value={amount} onChange={(e) => setAmount(e.target.value)} placeholder="Amount" style={{ ...inputStyle, width: 160, fontFamily: MONO }} />
-            {yearlyKind(kind) && (
+            {native != null && native !== 'month' && (
               <span style={{ display: 'inline-flex', border: `1px solid ${HAIR}`, borderRadius: 5, overflow: 'hidden' }}>
-                {(['mo', 'yr'] as const).map((u) => (
+                {(['mo', 'per'] as const).map((u) => (
                   <button
                     key={u}
                     data-testid="budget-amount-unit"
-                    data-unit={u}
+                    data-unit={u === 'per' ? PERIOD_SHORT[native] : u}
                     aria-pressed={unit === u}
                     onClick={() => {
                       if (unit === u) return
@@ -349,7 +432,7 @@ export function BudgetDialog({
                       // toggle; an empty field just switches the unit.
                       const n = Number(amount)
                       if (amount.trim() !== '' && Number.isFinite(n)) {
-                        setAmount(String(u === 'mo' ? round2(n / 12) : Math.round(n * 12)))
+                        setAmount(String(u === 'mo' ? round2(n / PERIOD_MONTHS[native]) : Math.round(n * PERIOD_MONTHS[native])))
                       }
                       setUnit(u)
                     }}
@@ -363,27 +446,39 @@ export function BudgetDialog({
                       color: unit === u ? SURFACE : MUT,
                     }}
                   >
-                    /{u}
+                    /{u === 'per' ? PERIOD_SHORT[native] : u}
                   </button>
                 ))}
               </span>
             )}
           </div>
-          {yearlyKind(kind) && amtOk && amtNum > 0 && (
+          {native != null && native !== 'month' && amtOk && amtNum > 0 && (
             <div data-testid="budget-amount-equiv" style={{ fontSize: 11.5, color: FAINT, marginTop: 6 }}>
               {unit === 'mo'
-                ? `≈ ${fmt(Math.round(amtNum * 12))}/yr — saved as the year's total`
-                : `≈ ${fmt(round2(amtNum / 12))}/mo`}
+                ? `≈ ${fmt(Math.round(amtNum * PERIOD_MONTHS[native]))}/${PERIOD_SHORT[native]} — saved as the ${PERIOD_WORD[native]}'s total`
+                : `≈ ${fmt(round2(amtNum / PERIOD_MONTHS[native]))}/mo`}
             </div>
           )}
           {(avg3 !== null || avg6 !== null) && (
             <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap', marginTop: 8 }}>
               <span style={{ fontSize: 11.5, color: FAINT }}>What this actually cost you:</span>
-              {avg3 !== null && <UseAmount label={`3-month average ${fmt(avg3)}`} onUse={() => setAmount(String(Math.round(avg3)))} />}
-              {avg6 !== null && <UseAmount label={`6-month average ${fmt(avg6)}`} onUse={() => setAmount(String(Math.round(avg6)))} />}
+              {/* Averages are per NATIVE window (3 quarters for a quarterly budget), so using one
+                  sets the record's own total — the entry unit follows it. */}
+              {avg3 !== null && (
+                <UseAmount
+                  label={`3-${PERIOD_WORD[native ?? 'month']} average ${fmt(avg3)}`}
+                  onUse={() => { setUnit('per'); setAmount(String(Math.round(avg3))) }}
+                />
+              )}
+              {avg6 !== null && (
+                <UseAmount
+                  label={`6-${PERIOD_WORD[native ?? 'month']} average ${fmt(avg6)}`}
+                  onUse={() => { setUnit('per'); setAmount(String(Math.round(avg6))) }}
+                />
+              )}
             </div>
           )}
-          {avg3 === null && avg6 === null && monthly && (
+          {avg3 === null && avg6 === null && native != null && (
             <div style={{ fontSize: 11.5, color: FAINT, marginTop: 8 }}>
               Not enough history yet to say what this usually costs.
             </div>
@@ -407,8 +502,8 @@ export function BudgetDialog({
               cat={candidate.name ?? previewTitle(candidate, d, vault.trackings)}
               caption={
                 candidate.scope
-                  ? monthlyEquivalent(candidate, cm) != null
-                    ? `${budgetScopeLabel(vault, candidate)} · ≈ ${fmt(monthlyEquivalent(candidate, cm)!)}/mo`
+                  ? monthlyEquivalent(candidate) != null
+                    ? `${budgetScopeLabel(vault, candidate)} · ≈ ${fmt(monthlyEquivalent(candidate)!)}/mo`
                     : budgetScopeLabel(vault, candidate)
                   : undefined
               }
@@ -419,7 +514,7 @@ export function BudgetDialog({
               proj={proj}
               domainMax={computeBudgetDomain([{ spent, budget: candidate.amount, proj }])}
               first
-              elapsed={monthly ? dayOfToday() / daysInMonth(cm) : scopeYear != null ? yearElapsedFraction(scopeYear, today) : 1}
+              elapsed={native != null ? periodElapsedFraction(native, cm, today) : 1}
             />
           </div>
         </Field>

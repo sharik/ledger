@@ -13,8 +13,8 @@ import {
 } from '../model/selectors'
 import { compare } from '../analytics/compare'
 import { addDays, rebaseSelection } from '../analytics/selections'
-import { MIN_PACE_DAYS, monthEndProjectionThrough, pace, yearElapsedFraction, yearEndProjection } from '../analytics/project'
-import { budgetScopeLabel, budgetScopeSpent, budgetScopeYear, isMonthlyScope, monthlyEquivalent } from '../analytics/budgets'
+import { MIN_PACE_DAYS, monthEndProjectionThrough, pace, periodElapsedFraction, periodEndProjection, periodEndProjectionThrough } from '../analytics/project'
+import { budgetNativePeriod, budgetScopeLabel, budgetScopeSpent, monthlyEquivalent } from '../analytics/budgets'
 import { budgetCategoryIds } from '../model/types'
 import { DashPeriodProvider, dashPeriodOf } from './dashPeriod'
 import { PeriodStepper, periodLabelOf, readPeriodParam, withGran, type PeriodValue } from './kit/PeriodStepper'
@@ -118,7 +118,7 @@ export function DashboardScreen() {
   // Both projections already return the partial total unchanged for a period that is not the
   // current one, so a finished month reports what it cost rather than a fabricated pace.
   const through = fresh.through ?? today
-  const spendProj = seg === 'year' ? yearEndProjection(headline, dp.anchorYear, today) : monthEndProjectionThrough(headline, cm, through)
+  const spendProj = seg === 'year' ? periodEndProjection(headline, 'year', `${dp.anchorYear}-01`, today) : monthEndProjectionThrough(headline, cm, through)
   const spendPct = pctDelta(cmpMain.a.totalRaw, cmpMain.b.totalRaw)
   // Both windows as dates rather than as the phrase "same point". Selections here are
   // calendar periods starting on the 1st, so the counted length IS the end day-of-month —
@@ -173,22 +173,37 @@ export function DashboardScreen() {
   }, [d, cm])
 
   // --- plan status cell ---
-  // NOTE: this keys `${cm}|${categoryId}` directly — legacy-monthly arithmetic — so it shows
-  // only legacy monthly budgets. A scoped budget (annual, per-trip, group, recurring) counts a
-  // different period or a different set of rows; drawing it against this month's category spend
-  // rendered an annual €2,400 as blown every month. Plan is the surface that knows how to read
-  // those (rollup memo lines, year pacing); the Dashboard cell shows what it can show honestly.
+  // Every budget except per-trip is checked INSIDE ITS OWN native window (month, quarter,
+  // half-year, calendar year) containing the anchor month — `budgetScopeSpent` windows it, and
+  // the projection paces that window, so an annual €2,400 is never drawn against one month's
+  // spend. Per-trip budgets stay out: a trip's span is not a calendar period, and the summary
+  // line says so rather than silently counting them.
   //
-  // Budgets are monthly amounts, so this stays month-scoped even in year granularity, reading
-  // the year's last elapsed month. Rolling twelve monthly budgets into an annual figure is a
-  // different question with its own scope rules (`analytics/budgetRollup.ts`); inventing a second
+  // This stays anchored to the month even in year granularity, reading the year's last elapsed
+  // month — the year window of every budget follows from that anchor. Rolling budgets into one
+  // figure is a different question with its own scope rules (`budgetRollup`); inventing a second
   // answer to it here is how two screens start disagreeing.
+  const planChecked = useMemo(
+    () => vault.budgets.filter((b) => b.scope?.kind !== 'tracking'),
+    [vault.budgets],
+  )
+  const perTripCount = vault.budgets.length - planChecked.length
   const overPace = useMemo(
-    () => vault.budgets
-      .filter((b) => !b.scope)
-      .filter((b) => monthEndProjectionThrough(d.spentByCatMonth.get(`${cm}|${b.categoryId}`) ?? 0, cm, through) > b.amount)
-      .map((b) => catInfo(b.categoryId).name),
-    [vault.budgets, d, cm, through],
+    () =>
+      planChecked
+        .filter((b) => {
+          const native = budgetNativePeriod(b)!
+          const spent = budgetScopeSpent(vault, b, cm, rates)
+          // A month paces against the statement window; coarser periods against the calendar —
+          // the same split the Plan rows use.
+          const proj =
+            native === 'month'
+              ? periodEndProjectionThrough(spent, 'month', cm, through)
+              : periodEndProjection(spent, native, cm, today)
+          return proj > b.amount
+        })
+        .map((b) => b.name ?? (budgetCategoryIds(b)[0] ? catInfo(budgetCategoryIds(b)[0]!).name : 'Recurring')),
+    [planChecked, vault, cm, through, today, rates],
   )
   const activeGoals = vault.goals.filter((g) => !g.archived).length
   const goalsBehind = useMemo(
@@ -666,7 +681,16 @@ export function DashboardScreen() {
           </div>
         </div>
 
-        <div style={{ fontFamily: MONO, fontSize: 10, color: FAINT, letterSpacing: '.06em', marginBottom: 2 }}>GOALS</div>
+        {/* An empty plan shows an invitation, not two bare kickers over nothing. */}
+        {vault.budgets.length === 0 && activeGoals === 0 && (
+          <div data-testid="dash-plan-empty" style={{ fontSize: 12.5, color: FAINT, lineHeight: 1.6, padding: '8px 0 4px' }}>
+            No plan yet — budgets and goals live on the Plan screen.{' '}
+            <button onClick={() => goTab('plan')} style={{ fontSize: 12.5, color: ACCENT, background: 'none', border: 'none', padding: 0, cursor: 'pointer' }}>
+              Set one up →
+            </button>
+          </div>
+        )}
+        {activeGoals > 0 && <div style={{ fontFamily: MONO, fontSize: 10, color: FAINT, letterSpacing: '.06em', marginBottom: 2 }}>GOALS</div>}
         {vault.goals.filter((g) => !g.archived).map((g) => {
           const st = goalStatus(vault, g, today, rates)
           const src = g.source
@@ -686,6 +710,7 @@ export function DashboardScreen() {
           )
         })}
 
+        {planChecked.length > 0 && (
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', margin: '18px 0 2px' }}>
           <span style={{ fontFamily: MONO, fontSize: 10, color: FAINT, letterSpacing: '.06em' }}>BUDGETS</span>
           <span style={{ display: 'inline-flex', alignItems: 'center', gap: 12, fontFamily: MONO, fontSize: 9.5, color: FAINT }}>
@@ -695,28 +720,29 @@ export function DashboardScreen() {
             <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}><span style={{ display: 'inline-block', width: 9, height: 9, background: 'var(--neg)', borderRadius: 1 }} />spent past budget</span>
           </span>
         </div>
+        )}
         {(() => {
-          // Every budget draws with ITS period's arithmetic, mirroring Plan: monthly scopes
-          // (legacy, group, recurring) pace against this month via their real scope spend;
-          // year scopes (annual, annual group, yearly recurring) show their year's spend,
-          // a marker at the year's elapsed fraction, a year-end pace and the ≈ €/mo caption —
-          // never against one month's spend, which rendered an annual €2,400 as blown every
-          // month. Only per-trip budgets stay on Plan: their span is not a calendar period.
+          // Every budget draws with ITS period's arithmetic, mirroring Plan: month-native
+          // scopes (legacy, group, monthly recurring) pace against this month via their real
+          // scope spend; coarser natives (quarterly, half-year, annual, yearly recurring) show
+          // their own window's spend, a marker at that window's elapsed fraction, a window-end
+          // pace and the ≈ €/mo caption — never against one month's spend, which rendered an
+          // annual €2,400 as blown every month. Only per-trip budgets stay on Plan: their span
+          // is not a calendar period.
           const rows = vault.budgets.flatMap((b) => {
-            if (b.scope?.kind === 'tracking') return []
-            const year = budgetScopeYear(b, cm)
-            const spent = b.scope ? budgetScopeSpent(vault, b, cm, rates) : (d.spentByCatMonth.get(`${cm}|${b.categoryId}`) ?? 0)
-            const proj = isMonthlyScope(b)
-              ? monthEndProjectionThrough(spent, cm, through)
-              : year != null
-                ? yearEndProjection(spent, year, today)
-                : spent
-            return [{ b, year, spent, proj }]
+            const native = budgetNativePeriod(b)
+            if (native === null) return []
+            const spent = budgetScopeSpent(vault, b, cm, rates)
+            const proj =
+              native === 'month'
+                ? periodEndProjectionThrough(spent, 'month', cm, through)
+                : periodEndProjection(spent, native, cm, today)
+            return [{ b, native, spent, proj }]
           })
           const domainMax = computeBudgetDomain(rows.map((r) => ({ spent: r.spent, budget: r.b.amount, proj: r.proj })))
-          return rows.map(({ b, year, spent, proj }, i) => {
+          return rows.map(({ b, native, spent, proj }, i) => {
             const catId = budgetCategoryIds(b)[0]
-            const perMonth = monthlyEquivalent(b, cm)
+            const perMonth = monthlyEquivalent(b)
             // A group budget keeps the same identity Plan gives it — composite title, accent,
             // member swatches — not its first member's name and color.
             const grp = b.scope?.kind === 'group' ? b.scope : undefined
@@ -734,11 +760,11 @@ export function DashboardScreen() {
                 domainMax={domainMax}
                 done={!!b.fixed}
                 first={i === 0}
-                elapsed={year != null ? yearElapsedFraction(year, today) : planElapsed}
+                elapsed={native === 'month' ? planElapsed : periodElapsedFraction(native, cm, today)}
                 // Same "data through" marker as Plan: the monthly projection is measured over
-                // the imported window, so the bar shows where that window stops. A year row
+                // the imported window, so the bar shows where that window stops. A coarser row
                 // paces by calendar instead, so it carries no coverage marker (as on Plan).
-                covered={year != null ? undefined : through.slice(0, 7) === cm ? Number(through.slice(8, 10)) / daysInMonth(cm) : through > cm ? 1 : 0}
+                covered={native !== 'month' ? undefined : through.slice(0, 7) === cm ? Number(through.slice(8, 10)) / daysInMonth(cm) : through > cm ? 1 : 0}
                 canDelete={false}
               />
             )
@@ -902,9 +928,16 @@ export function DashboardScreen() {
               to be over. */}
           {vault.budgets.length === 0
             ? planLine(FAINT, 'No budgets yet')
-            : overPace.length > 0
+            : planChecked.length === 0
+              ? planLine(FAINT, 'Only per-trip budgets — see Plan')
+              : overPace.length > 0
               ? planLine(BRICK, `${overPace.slice(0, 2).join(' · ')}${overPace.length > 2 ? ` +${overPace.length - 2} more` : ''} over ${planIsCurrent ? 'pace' : 'budget'}`)
-              : planLine(GREEN, `All ${vault.budgets.length} budget${vault.budgets.length === 1 ? '' : 's'} ${planIsCurrent ? 'on pace' : 'within budget'}`)}
+              : planLine(
+                  GREEN,
+                  // The count is what was CHECKED — each budget inside its own period — with
+                  // per-trip budgets named as unchecked rather than silently claimed.
+                  `All ${planChecked.length} budget${planChecked.length === 1 ? '' : 's'} ${planIsCurrent ? 'on pace' : 'within budget'}${perTripCount > 0 ? ` · ${perTripCount} per-trip not checked` : ''}`,
+                )}
           {activeGoals === 0
             ? planLine(FAINT, 'No goals yet')
             : goalsBehind === 0

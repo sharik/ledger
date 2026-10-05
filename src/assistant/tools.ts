@@ -20,7 +20,9 @@ import { budgetCategoryIds, budgetKey, CAT_TRANSFERS, isCashflow } from '../mode
 import type { Derived } from '../model/selectors'
 import type { RateBook } from '../import/fx'
 import { accountCurrencyMap, rowCurrency } from '../import/fx'
-import { budgetScopeLabel, budgetScopeSpent, budgetScopeTxns, scopeTrailingAvg } from '../analytics/budgets'
+import { budgetNativePeriod, budgetScopeLabel, budgetScopeSpent, budgetScopeTxns, scopeTrailingAvg, type BudgetPeriod } from '../analytics/budgets'
+import { categoryCadences, proposalFigure, CADENCE_WINDOW } from '../analytics/budgetPropose'
+import { completeMonths } from '../analytics/trends'
 import { compare } from '../analytics/compare'
 import { duplicateIds, findDuplicateImports } from '../analytics/duplicates'
 import { goalStatus } from '../analytics/goals'
@@ -108,10 +110,13 @@ const SELECTION_SCHEMA = {
   },
 }
 
-/** `propose_plan`'s budget amount. Safe mode refuses the trailing forms, so it must not offer them. */
-const AMOUNT_DESC = 'A number, or "trailing-3" / "trailing-6" for a budget.'
-const AMOUNT_DESC_SAFE =
-  'A number, for a budget. It has to come from the user, because safe mode cannot work an average out for you.'
+/** `propose_plan`'s budget amount. Safe mode resolves the trailing forms too — the figure lands
+ *  on the approval card, rendered on this device, and is REDACTED from the tool result — so the
+ *  model can propose real numbers without ever reading one. */
+const AMOUNT_DESC =
+  'A number, or "trailing-3" / "trailing-6" for a budget — the mean of what it actually cost over ' +
+  'the last 3 or 6 complete native periods (months for a monthly budget, quarters for a quarterly ' +
+  'one, and so on), computed by Ledger.'
 
 // ---------------------------------------------------------------- the catalogue
 
@@ -141,11 +146,18 @@ export const TOOLS: ToolDef[] = [
   },
   {
     name: 'list_budgets',
-    description: 'Budgets with their name, scope, the categories they measure, amount and derived spend for a month.',
+    description:
+      'Budgets with their name, scope, native period (month/quarter/half/year), the categories they measure, amount and derived spend for a month.',
     parameters: {
       type: 'object',
       properties: { month: { type: 'string', description: 'YYYY-MM. Defaults to the current month.' } },
     },
+  },
+  {
+    name: 'spending_cadence',
+    description:
+      'Per-category spending rhythm over the last complete months: cadence (monthly, quarterly, semiannual, yearly — or none), how many scanned months had spend, whether a steady base carries periodic lumps, the suggested native budget period, and which periods the category is already budgeted at. Full access adds suggested figures; safe mode returns the rhythm without any amounts. Call this before proposing budgets, and pick each budget’s period from its rhythm — lumpy spending belongs on a quarterly, half-year or yearly budget, never an impossible monthly bar.',
+    parameters: { type: 'object', properties: {} },
   },
   {
     name: 'list_goals',
@@ -303,9 +315,12 @@ export const TOOLS: ToolDef[] = [
       'and tell them to correct it before applying — there is nowhere to correct it, and one click ' +
       'turns your invented number into their real target. If you need a figure you do not have, ask ' +
       'for it in a reply and wait; propose nothing until they answer. ' +
-      'Prefer archiving a goal over deleting it. For a budget amount you may pass the literal number, or ' +
-      '"trailing-3"/"trailing-6" to use what that budget actually cost over the last 3 or 6 complete months — ' +
-      'Ledger works the figure out itself, so the card shows the same number the app would suggest. ' +
+      'Prefer archiving a goal over deleting it. A budget has a native PERIOD — month, quarter, half-year ' +
+      'or calendar year, evergreen — and can be viewed at any coarser horizon, never finer; pick it from ' +
+      'spending_cadence so lumpy spending lands on the period it is honest at. For a budget amount you may ' +
+      'pass the literal number, or "trailing-3"/"trailing-6" to use what that budget actually cost over the ' +
+      'last 3 or 6 complete native periods — Ledger works the figure out itself, so the card shows the same ' +
+      'number the app would suggest. ' +
       'A GOAL tracks its progress in one of four ways, and you pick which by passing ONE of these: ' +
       'accountId (progress is that account’s latest balance snapshot), categoryIds with a single id ' +
       '(progress is the sum of that category’s transactions, updated as new ones arrive), trackingId ' +
@@ -333,7 +348,16 @@ export const TOOLS: ToolDef[] = [
             'becomes the running sum of that category’s transactions, so the goal fills itself in and needs ' +
             'no manual updating.',
         },
-        cadence: { type: 'string', description: 'Budget: "monthly" (default) or "yearly".' },
+        period: {
+          type: 'string',
+          description:
+            'Budget: "month" (default), "quarter", "half" or "year" — its native period, calendar-aligned (Q1=Jan–Mar, H1=Jan–Jun) and evergreen. Not for recurring budgets (their cadence fixes the window) or trips.',
+        },
+        cadence: {
+          type: 'string',
+          description:
+            'Budget with recurringOnly: "monthly" (default) or "yearly" — which recurring cadence to count. On an ordinary budget, "yearly" is accepted as an alias for period "year".',
+        },
         recurringOnly: { type: 'boolean', description: 'Budget: count only charges marked recurring.' },
         trackingId: {
           type: 'string',
@@ -363,11 +387,15 @@ export const TOOLS: ToolDef[] = [
  *
  * `propose_plan` is deliberately NOT here. It writes, but a write is not a read: when the model
  * proposes "set the groceries budget to 400", the 400 came from the person asking, not from the
- * vault, and nothing about their spending travelled to get it. Only two of its paths would leak a
- * vault figure back to the model, and `proposePlan` closes both in safe mode: a `trailing-3`
- * amount, which Ledger works out from real spending, and the duplicate-budget error, which names
- * the existing budget's amount. Everything else it does — archive a goal, rename one, delete a
- * budget, set an amount the user just said out loud — reads nothing.
+ * vault, and nothing about their spending travelled to get it. The two paths that touch a vault
+ * figure are handled by REDACTING THE RESULT, not by refusing: a `trailing-3` amount resolves
+ * in-app and lands on the approval card — rendered on this device, read by the user before
+ * Apply — while the tool result omits it; the duplicate-budget error names the existing budget's
+ * id but not its amount. Everything else it does — archive a goal, rename one, delete a budget,
+ * set an amount the user just said out loud — reads nothing.
+ *
+ * `spending_cadence` is not here either: it hands back rhythm — cadence words, month counts,
+ * suggested periods — and its executor strips every figure in safe mode.
  */
 export const FULL_ONLY: readonly string[] = ['aggregate', 'query_transactions', 'compare_selections', 'propose_edit']
 
@@ -377,25 +405,7 @@ export const FULL_ONLY: readonly string[] = ['aggregate', 'query_transactions', 
  * numbers on their own screen.
  */
 export const toolsFor = (access: Access): ToolDef[] =>
-  access === 'full' ? TOOLS : TOOLS.filter((t) => !FULL_ONLY.includes(t.name)).map(safeSchema)
-
-/**
- * Descriptions have to match what the executor will actually do at this access level. `propose_plan`
- * advertises `trailing-3`/`trailing-6` for a budget amount, and safe mode refuses them (§5.0) — so a
- * model that reads the schema, calls it, and gets refused has burned a round on the tool's own advice.
- * One real conversation did that three times in a row before this existed.
- */
-function safeSchema(tool: ToolDef): ToolDef {
-  if (tool.name !== 'propose_plan') return tool
-  const props = tool.parameters.properties as Record<string, unknown>
-  return {
-    ...tool,
-    parameters: {
-      ...tool.parameters,
-      properties: { ...props, amount: { type: 'string', description: AMOUNT_DESC_SAFE } },
-    },
-  }
-}
+  access === 'full' ? TOOLS : TOOLS.filter((t) => !FULL_ONLY.includes(t.name))
 
 /**
  * Withheld tools a skill's text leans on, so Settings can say so on the skill rather than letting the
@@ -455,6 +465,8 @@ function run(ctx: ToolCtx, name: string, args: Record<string, unknown>): ExecOut
       return listTrackings(ctx)
     case 'list_budgets':
       return listBudgets(ctx, args)
+    case 'spending_cadence':
+      return spendingCadence(ctx)
     case 'list_goals':
       return listGoals(ctx)
     case 'aggregate':
@@ -635,10 +647,12 @@ function listBudgets(ctx: ToolCtx, args: Record<string, unknown>): ExecOutcome {
     // How many charges this budget's own scope matched, through `budgetScopeTxns` — the same matcher
     // `budgetScopeSpent` sums, so the count belongs to the figure on the Plan row even though the
     // figure itself stays here. The limit the user set is money too, so it is withheld as well.
+    // `period` stays in both modes: it is structure, not money.
     const rows = ctx.vault.budgets.map((b) => ({
       id: b.id,
       name: b.name,
       label: budgetScopeLabel(ctx.vault, b),
+      period: budgetNativePeriod(b),
       categoryIds: budgetCategoryIds(b),
       month: mk,
       transactionCount: budgetScopeTxns(ctx.vault, b, mk).size,
@@ -651,12 +665,50 @@ function listBudgets(ctx: ToolCtx, args: Record<string, unknown>): ExecOutcome {
     // three, and its `categoryId` is the CAT_TRANSFERS placeholder — so both go on the row.
     name: b.name,
     label: budgetScopeLabel(ctx.vault, b),
+    period: budgetNativePeriod(b),
     categoryIds: budgetCategoryIds(b),
     amount: b.amount,
     spent: round2(budgetScopeSpent(ctx.vault, b, mk, ctx.rates)),
     month: mk,
   }))
   return ok(rows, `Budgets · ${mk} · ${rows.length}`)
+}
+
+/**
+ * Per-category rhythm through `categoryCadences` — the SAME detection `proposeBudgets` runs, so
+ * the assistant and the "from history" dialog can never disagree about what a category's rhythm
+ * is. Safe mode returns the rhythm (cadence words, month counts, periods) and strips every
+ * figure; full mode adds the suggested amounts.
+ */
+function spendingCadence(ctx: ToolCtx): ExecOutcome {
+  const monthsCovered = completeMonths(ctx.derived, CADENCE_WINDOW, ctx.derived.currentMonth).length
+  const catById = new Map(ctx.vault.categories.map((c) => [c.id, c]))
+  const budgeted = new Map<string, BudgetPeriod[]>()
+  for (const b of ctx.vault.budgets) {
+    const native = budgetNativePeriod(b)
+    if (native === null) continue
+    for (const id of budgetCategoryIds(b)) budgeted.set(id, [...(budgeted.get(id) ?? []), native])
+  }
+  const rows = categoryCadences(ctx.derived, ctx.derived.currentMonth, ctx.rates).map((cc) => ({
+    categoryId: cc.categoryId,
+    name: catById.get(cc.categoryId)?.name ?? '—',
+    cadence: cc.cadence,
+    mixed: cc.mixed,
+    monthsWithSpend: cc.monthsWithSpend,
+    suggestedPeriod: cc.period,
+    budgetedPeriods: budgeted.get(cc.categoryId) ?? [],
+    ...(safeMode(ctx)
+      ? {}
+      : {
+          typicalMonthly: cc.monthly,
+          suggestedNativeTotal: cc.period ? proposalFigure(cc, cc.period) : null,
+          medianMonth: cc.median,
+        }),
+  }))
+  return ok(
+    safeMode(ctx) ? { access: 'safe', monthsCovered, categories: rows } : { monthsCovered, categories: rows },
+    `Spending cadence · ${rows.length} categories over ${monthsCovered} months`,
+  )
 }
 
 function listGoals(ctx: ToolCtx): ExecOutcome {
@@ -1435,7 +1487,13 @@ function proposePlan(ctx: ToolCtx, args: Record<string, unknown>): ExecOutcome {
   }
   const yearly = str('cadence') === 'yearly'
   const recurringOnly = argOf(args, 'recurringOnly') === true
-  const year = Number(ctx.derived.currentMonth.slice(0, 4))
+  const periodArg = str('period')
+  if (periodArg !== undefined && !['month', 'quarter', 'half', 'year'].includes(periodArg)) {
+    return fail('period must be "month", "quarter", "half" or "year".')
+  }
+  // `cadence: "yearly"` predates `period` and stays accepted as an alias for period "year" on an
+  // ordinary budget; with recurringOnly it names which recurring cadence to count.
+  const period: BudgetPeriod = (periodArg as BudgetPeriod | undefined) ?? (yearly && !recurringOnly ? 'year' : 'month')
 
   // Build the scope from the shape asked for, reusing the parking conventions the model already
   // uses for budgets that are not about a single category.
@@ -1444,15 +1502,29 @@ function proposePlan(ctx: ToolCtx, args: Record<string, unknown>): ExecOutcome {
   if (trackingId) {
     scope = { kind: 'tracking', trackingId }
     categoryId = CAT_TRANSFERS
-  } else if (categoryIds.length > 1) {
-    scope = { kind: 'group', categoryIds, ...(yearly ? { year } : {}) }
-    categoryId = CAT_TRANSFERS
   } else if (recurringOnly) {
-    scope = { kind: 'recurring', cadence: yearly ? 'yearly' : 'monthly', ...(categoryIds[0] ? { categoryId: categoryIds[0] } : {}) }
+    if (period === 'quarter' || period === 'half') {
+      return fail(
+        'Recurring charges are marked monthly or yearly on transactions, so a recurring budget can only be monthly or yearly. Use an ordinary category budget with period "quarter" or "half" instead.',
+      )
+    }
+    scope = {
+      kind: 'recurring',
+      cadence: yearly || period === 'year' ? 'yearly' : 'monthly',
+      ...(categoryIds[0] ? { categoryId: categoryIds[0] } : {}),
+    }
     if (!categoryIds[0]) categoryId = CAT_TRANSFERS
-  } else if (yearly && categoryIds[0]) {
-    scope = { kind: 'category-year', categoryId: categoryIds[0], year }
+  } else if (categoryIds.length > 1) {
+    scope = { kind: 'group', categoryIds, ...(period !== 'month' ? { period } : {}) }
+    categoryId = CAT_TRANSFERS
+  } else if (period !== 'month' && categoryIds[0]) {
+    scope = { kind: 'category-period', categoryId: categoryIds[0], period }
   } else if (action === 'update' && categoryIds.length === 0) {
+    // Keeping the scope is right only for an amount-only change: a new period asked for here would
+    // be dropped, saving (say) an annual figure as a monthly limit.
+    if ((periodArg !== undefined || yearly) && budgetNativePeriod(existing!) !== period) {
+      return fail('To change a budget\'s period, pass its categoryIds along with the new period.')
+    }
     scope = existing!.scope // amount-only change keeps the scope it had
   }
 
@@ -1463,22 +1535,17 @@ function proposePlan(ctx: ToolCtx, args: Record<string, unknown>): ExecOutcome {
   // model chooses the policy; the app computes the number, so the card and the budget dialog's
   // own suggestion cannot disagree.
   const amountArg = str('amount')
-  const months = amountArg === 'trailing-3' ? 3 : amountArg === 'trailing-6' ? 6 : null
-  // The one path through this tool that reads real spending, so the one path safe mode closes. The
-  // resolved figure would come straight back in the result below, which is a leak whatever the card
-  // ends up saying.
-  if (months !== null && safeMode(ctx)) {
-    return fail(
-      `Working out a ${months}-month average means reading what this person actually spent, which safe mode withholds. Ask them what limit they want and pass it as a number.`,
-    )
-  }
+  const trailing = amountArg === 'trailing-3' ? 3 : amountArg === 'trailing-6' ? 6 : null
+  // The one path through this tool that reads real spending. Safe mode does NOT refuse it: the
+  // resolved figure lands on the approval card — rendered on this device, read by the user
+  // before Apply — and is redacted from the tool RESULT below, so the model never sees it.
   let amount: number
-  if (months !== null) {
+  if (trailing !== null) {
     const probe: Budget = { id: 'probe', updatedAt: '', categoryId, amount: 0, name, scope }
-    const avg = scopeTrailingAvg(ctx.vault, probe, months, ctx.derived.currentMonth, ctx.rates)
+    const avg = scopeTrailingAvg(ctx.vault, probe, trailing, ctx.derived.currentMonth, ctx.rates)
     if (avg === null) {
       return fail(
-        `Not enough history to work out a ${months}-month average for that, so there is no figure to propose. Pass an explicit amount instead.`,
+        `Not enough history to work out a trailing average over ${trailing} periods for that, so there is no figure to propose. Pass an explicit amount instead.`,
       )
     }
     amount = Math.round(avg)
@@ -1503,21 +1570,26 @@ function proposePlan(ctx: ToolCtx, args: Record<string, unknown>): ExecOutcome {
   }
 
   const label = budgetPhrase(name, catName(categoryId))
-  const basis = months !== null ? ` (${months}-month average)` : ''
+  const basis = trailing !== null ? ` (trailing average over ${trailing} periods)` : ''
+  // A trailing figure in safe mode is a vault figure: the card carries it, the result does not.
+  const resultAmount =
+    trailing !== null && safeMode(ctx)
+      ? { note: 'The resolved trailing average is shown on the approval card; safe mode does not return it here.' }
+      : { amount }
   if (action === 'create') {
     ctx.propose({
       summary: `Add a ${label} of ${fmtMoney(ctx, amount)}${basis}`,
       detail: reason,
       op: { kind: 'addBudget', categoryId, amount, name, scope },
     })
-    return ok({ proposed: 'budget.create', amount, awaitingApproval: true }, `Proposed: ${name ?? label} ${fmtMoney(ctx, amount)}`)
+    return ok({ proposed: 'budget.create', ...resultAmount, awaitingApproval: true }, `Proposed: ${name ?? label} ${fmtMoney(ctx, amount)}`)
   }
   ctx.propose({
     summary: `Change the ${label} to ${fmtMoney(ctx, amount)}${basis}`,
     detail: reason,
     op: { kind: 'updateBudget', id: existing!.id, categoryId, amount, name, scope },
   })
-  return ok({ proposed: 'budget.update', amount, awaitingApproval: true }, `Proposed: ${name ?? label} → ${fmtMoney(ctx, amount)}`)
+  return ok({ proposed: 'budget.update', ...resultAmount, awaitingApproval: true }, `Proposed: ${name ?? label} → ${fmtMoney(ctx, amount)}`)
 }
 
 /**
